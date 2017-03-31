@@ -113,12 +113,16 @@ int queue_size (queue_t *queue) {
 
 void queue_print (char *name, queue_t *queue, void print_elem (void*) ) {
     if(queue != NULL){ //fila existe
+	printf("[");
         queue_t *elemtmp = queue;
         while(elemtmp->next != queue){
             print_elem(elemtmp);
             elemtmp = elemtmp->next;
+	    if(elemtmp->next != queue){printf(" ");}
         }
-    }
+	printf("]");
+    }else{
+	printf("[]");}
     
 }
 
