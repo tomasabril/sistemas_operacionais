@@ -68,7 +68,7 @@ int main (int argc, char *argv[])
    }
    else
    {
-      perror ("Erro na criação da pilha: ");
+      perror ("Erro na criacao da pilha: ");
       exit (1);
    }
 
@@ -86,7 +86,7 @@ int main (int argc, char *argv[])
    }
    else
    {
-      perror ("Erro na criação da pilha: ");
+      perror ("Erro na criacao da pilha: ");
       exit (1);
    }
 

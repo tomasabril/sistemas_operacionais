@@ -3,6 +3,7 @@
 // Versão 1.0 -- Março de 2015
 // bem que podia colocar as coisas ai, como vou saber o que tem que ter?
 // Estruturas de dados internas do sistema operacional
+
 #include <ucontext.h>
 #ifndef __DATATYPES__
 #define __DATATYPES__
@@ -15,6 +16,7 @@ typedef struct task_t
     // demais informações da tarefa
     // preencher quando necessário
     ucontext_t context;
+    struct queue_t **my_queue;  //fila em que essa task esta inserida
 } task_t ;
 
 // estrutura que define um semáforo
