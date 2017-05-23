@@ -29,9 +29,9 @@ void queue_append (queue_t **queue, queue_t *elem){
                     (*queue)->prev = elem;
                 }
 
-            } else printf("\nelemento esta em outra lista");
-        }else printf("\nelemento nao existe");
-    }else printf("\nfila nao existe");
+            } else printf("\nappend: elemento esta em outra lista");
+        }else printf("\nappend: elemento nao existe");
+    }else printf("\nappend: fila nao existe");
 
 }
 //------------------------------------------------------------------------------
@@ -52,7 +52,7 @@ queue_t *queue_remove (queue_t **queue, queue_t *elem) {
                     while (elemtmp != elem){
                         elemtmp = elemtmp->next;
                         if(elemtmp == *queue){
-                            printf("\nelemento nao esta na fila");
+                            printf("\nremove: elemento nao esta na fila");
                             return NULL;
                         }
                     }
@@ -80,9 +80,9 @@ queue_t *queue_remove (queue_t **queue, queue_t *elem) {
                     }
                     return elem;
                 }
-            } else printf("\nelemento nao existe");
-        } else printf("\nfila vazia");
-    } else printf("\nfila nao existe");
+            } else printf("\nremove: elemento nao existe");
+        } else printf("\nremove: fila vazia");
+    } else printf("\nremove: fila nao existe");
     return NULL;
 }
 

@@ -205,7 +205,8 @@ task_t *scheduler()
         int pmin = prio_max+1;
         task_t * next;
         task_t *tsk_tmp = ready_tasks;
-        for (int i = 0; i < queue_size((queue_t *)ready_tasks); i++) {
+        int i;
+        for (i = 0; i < queue_size((queue_t *)ready_tasks); i++) {
             if (tsk_tmp->dinamic_prio < pmin) {
                 pmin = tsk_tmp->dinamic_prio;
                 next = tsk_tmp;
@@ -218,7 +219,7 @@ task_t *scheduler()
 
         //envelhece as que sobraram na fila
         tsk_tmp = ready_tasks;
-        for (int i = 0; i < queue_size((queue_t *)ready_tasks); i++) {
+        for (i = 0; i < queue_size((queue_t *)ready_tasks); i++) {
             tsk_tmp->dinamic_prio = tsk_tmp->dinamic_prio + a;
             tsk_tmp = (queue_t *)tsk_tmp->next; // aqui que tem quer ver se ta certo tbm
         }

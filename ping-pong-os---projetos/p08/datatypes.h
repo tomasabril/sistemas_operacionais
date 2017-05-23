@@ -27,7 +27,7 @@ typedef struct task_t
     unsigned int activations;   // vezes em que a tarefa foi ativada;
     int exit_code;              // quando a tarefa sai salva aqui o codigo
     status_t status;
-    struct queue_t **wait_me_q; //tarefas me esperando terminar
+    struct task_t *wait_me_q; //tarefas me esperando terminar
 } task_t ;
 
 // estrutura que define um semáforo

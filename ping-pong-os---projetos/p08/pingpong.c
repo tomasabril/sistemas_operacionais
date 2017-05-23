@@ -55,6 +55,7 @@ void pingpong_init ()
     main_tsk.exec_time = 0;
     main_tsk.activations = 1;
     main_tsk.status = EXEC;
+    main_tsk.wait_me_q = NULL;
     userTasks++;
     //task_setprio(&main_tsk, 0);
     current_tsk = &main_tsk;
@@ -114,6 +115,7 @@ int task_create (task_t *task,			// descritor da nova tarefa
             task->exec_time = 0;
             task->activations = 0;
             task->status = READY;
+            task->wait_me_q = ;
 
         } else {
             perror ("stack nao pode ser criado ");
@@ -179,13 +181,13 @@ void task_exit (int exitCode)
 
     unsigned int now = systime();
     unsigned int exec_time = now - current_tsk->init_time;
-    printf("Task %d exit: exec_time %d ms, proc_time %d ms, %d activations\n", current_tsk->tid, exec_time, current_tsk->proc_time, current_tsk->activations);
+    //printf("Task %d exit: exec_time %d ms, proc_time %d ms, %d activations\n", current_tsk->tid, exec_time, current_tsk->proc_time, current_tsk->activations);
 
     current_tsk->exit_code = exitCode;
     current_tsk->status = ENDED;
 
     while(current_tsk->wait_me_q){
-    	task_resume(&(current_tsk->wait_me_q));
+    	task_resume((task_t *)current_tsk->wait_me_q);
     }
 
     if(current_tsk->tid == 1) {
@@ -275,7 +277,8 @@ task_t *scheduler()
         int pmin = prio_max+1;
         task_t * next;
         task_t *tsk_tmp = ready_tasks;
-        for (int i = 0; i < queue_size((queue_t *)ready_tasks); i++) {
+        int i;
+        for (i = 0; i < queue_size((queue_t *)ready_tasks); i++) {
             if (tsk_tmp->dinamic_prio < pmin) {
                 pmin = tsk_tmp->dinamic_prio;
                 next = tsk_tmp;
@@ -288,7 +291,7 @@ task_t *scheduler()
 
         //envelhece as que sobraram na fila
         tsk_tmp = ready_tasks;
-        for (int i = 0; i < queue_size((queue_t *)ready_tasks); i++) {
+        for (i = 0; i < queue_size((queue_t *)ready_tasks); i++) {
             tsk_tmp->dinamic_prio = tsk_tmp->dinamic_prio + a;
             tsk_tmp = (queue_t *)tsk_tmp->next; // aqui que tem quer ver se ta certo tbm
         }
@@ -384,13 +387,14 @@ void task_suspend (task_t *task, task_t **queue){
 		task = current_tsk;
 		current = 1;
 	}
-	if(queue){
-		if (task->my_queue){
-			queue_remove((queue_t **)&(task->my_queue), (queue_t *)task);    //tira da fila
-		}
-		queue_append((queue_t **) &queue, (queue_t *) task);  //colocando na fila
-		task->my_queue = (queue_t **) queue; // atualiza sua variavel de fila
+
+	if (task->my_queue){
+		queue_remove((queue_t **)&(task->my_queue), (queue_t *)task);    //tira da fila
 	}
+
+	queue_append((queue_t **) queue, (queue_t *) task);  //colocando na fila
+	task->my_queue = (queue_t **) queue; // atualiza sua variavel de fila
+
 	//se estou suspendendo a mesma que estou executando volta pro dispatcher
 	if(current){
 		task_switch(&dispatcher);
