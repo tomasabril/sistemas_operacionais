@@ -12,8 +12,9 @@
 #define TRUE 1
 #define FALSE 0
 
-// #define DEBUG true
+//#define DEBUG true
 //#define DEBUG_JOIN true
+//#define DEBUG_QUANTUM
 
 
 int id = 0;	//vai somando pra cada tarefa ter id diferente
@@ -59,7 +60,6 @@ void pingpong_init ()
     main_tsk.activations = 1;
     main_tsk.status = EXEC;
     main_tsk.wait_me_q = NULL;
-    //main_tsk.esperando_essa = NULL;
     main_tsk.lock = FALSE;
     userTasks++;
     task_setprio(&main_tsk, 0);
@@ -121,7 +121,6 @@ int task_create (task_t *task,			// descritor da nova tarefa
             task->activations = 0;
             task->status = READY;
             task->wait_me_q = NULL;
-            //task->esperando_essa = NULL;
             task->lock = FALSE;
 
         } else {
@@ -150,7 +149,7 @@ int task_create (task_t *task,			// descritor da nova tarefa
 #endif
 
     return task->tid;
-    //return 0;
+
 }
 
 // alterna a execução para a tarefa indicada
@@ -210,19 +209,23 @@ void task_exit (int exitCode)
 #endif
 
     // acordando tasks suspensas
-    // while(current_tsk->wait_me_q){
-    // 	task_resume((task_t *)current_tsk->wait_me_q);
-    // }
-    if (current_tsk->wait_me_q) {
+#if defined(DEBUG_JOIN)
+    int i=0;
+#endif
+    while (current_tsk->wait_me_q) {
+#if defined(DEBUG_JOIN)
+        printf("i=%d\n", i++);
+#endif
         current_tsk->wait_me_q->status = READY;
-        queue_append ((queue_t **) &ready_tasks, (queue_t *) current_tsk->wait_me_q) ;
+        current_tsk->wait_me_q->my_queue = NULL;
+        task_t * esperando = queue_remove((queue_t **)&(current_tsk->wait_me_q), (queue_t *)current_tsk->wait_me_q);
+
+        queue_append ((queue_t **) &ready_tasks, (queue_t *) esperando);
     }
 
     current_tsk->lock = FALSE;
 
-    if(current_tsk->tid == 1) {
-        //task_switch(&main_tsk);
-    } else {
+    if(current_tsk->tid != 1) {
         userTasks--;
         task_switch(&dispatcher);
     }
@@ -340,7 +343,6 @@ task_t *scheduler()
 }
 
 
-
 // define a prioridade estática de uma tarefa (ou a tarefa atual)
 void task_setprio (task_t *task, int prio)
 {
@@ -372,9 +374,9 @@ int task_getprio (task_t *task)
 // tratador do sinal, o que fazer quando der um tick
 void timer_tratador (int signum)
 {
-    //printf("-----------oioioi-------\n");
-#ifdef DEBUG
-    //printf("sigum: %d, quantum: %d, task_id: %d \n", signum, quantum, current_tsk->tid);
+
+#ifdef DEBUG_QUANTUM
+    printf("sigum: %d, quantum: %d, task_id: %d \n", signum, quantum, current_tsk->tid);
 #endif
 
     sysclock_ms++;
@@ -406,83 +408,59 @@ int task_join (task_t *task)
     if(task->status == ENDED) {
         return task->exit_code;
     }
+    // o lock impede o codigo de ser parado no meio de sua execução
     current_tsk->lock = TRUE;
-    //task_suspend(current_tsk, &(task->wait_me_q));
 
-    //
 #ifdef DEBUG
     printf("tarefa %d esperando tarefa %d \n", current_tsk->tid, task->tid);
 #endif
-    // task_t * em_espera = current_tsk;
-    // task_t * esperando = task;
-    //queue_remove((queue_t **)&ready_tasks, (queue_t *)em_espera);    //tira da fila
+
+    //muda o status da tarefa a ser suspensa
     current_tsk->status = SUSP;
-    task->wait_me_q = current_tsk;
-    //em_espera->esperando_essa = task;
     //fica esperando a outra terminar
     queue_remove((queue_t **)&ready_tasks, (queue_t *)current_tsk);    //tira da fila
+    // colocando na fila de tarefas esperando a task terminar
+    queue_append((queue_t **) &(task->wait_me_q), (queue_t *) current_tsk);
+    // atualiza variavel de fila
+    current_tsk->my_queue = (queue_t *) task->wait_me_q;
 
     current_tsk->lock = FALSE;
     task_switch(&dispatcher);   //volta pro dispatcher
-
-    //while ((em_espera->esperando_essa)->status != ENDED){
-// 	while (esperando->status != ENDED){
-
-// #if defined(DEBUG) || defined(DEBUG_JOIN)
-//     printf("tarefa %d esperando tarefa %d \n", current_tsk->tid, task->tid);
-//     printf("status da tarefa que estou esperando = ");
-//     if(esperando->status == READY){
-//     	printf("READY");
-//     }
-//     else if(esperando->status == EXEC){
-//     	printf("EXEC");
-//     }
-//     else if(esperando->status == SUSP){
-//     	printf("SUSP");
-//     }
-//     else if(esperando->status == ENDED){
-//     	printf("ENDED");
-//     }
-//     printf("\n");
-// #endif
-
-// 		task_yield();
-// 	}
 
 
     return task->exit_code;
 }
 
-// // suspende uma tarefa, retirando-a de sua fila atual, adicionando-a à fila
-// // queue e mudando seu estado para "suspensa"; usa a tarefa atual se task==NULL
-// void task_suspend (task_t *task, task_t **queue){
-// 	int current = 0;
-// 	if (!task){
-// 		task = current_tsk;
-// 		current = 1;
-// 	}
+// suspende uma tarefa, retirando-a de sua fila atual, adicionando-a à fila
+// queue e mudando seu estado para "suspensa"; usa a tarefa atual se task==NULL
+void task_suspend (task_t *task, task_t **queue){
+	int current = 0;
+	if (!task){
+		task = current_tsk;
+		current = 1;
+	}
 
-// 	if (task->my_queue){
-// 		queue_remove((queue_t **)&(task->my_queue), (queue_t *)task);    //tira da fila
-// 	}
+	if (task->my_queue){
+		queue_remove((queue_t **)&(task->my_queue), (queue_t *)task);    //tira da fila
+	}
 
-// 	queue_append((queue_t **) queue, (queue_t *) task);  //colocando na fila
-// 	task->my_queue = (queue_t **) queue; // atualiza sua variavel de fila
+	queue_append((queue_t **) queue, (queue_t *) task);  //colocando na fila
+	task->my_queue = (queue_t **) queue; // atualiza sua variavel de fila
 
-// 	//se estou suspendendo a mesma que estou executando volta pro dispatcher
-// 	if(current){
-// 		task_switch(&dispatcher);
-// 	}
-// }
+	//se estou suspendendo a mesma que estou executando volta pro dispatcher
+	if(current){
+		task_switch(&dispatcher);
+	}
+}
 
-// // acorda uma tarefa, retirando-a de sua fila atual, adicionando-a à fila de
-// // tarefas prontas ("ready queue") e mudando seu estado para "pronta"
-// void task_resume (task_t *task){
-// 	if (task->my_queue){
-// 		queue_remove((queue_t **)&(task->my_queue), (queue_t *)task);    //tira da fila
-// 	}
-// 	queue_append((queue_t **) &ready_tasks, (queue_t *) task);  //colocando na fila para esperar
-// 	task->my_queue = (queue_t **) &ready_tasks; // atualiza sua variavel de fila
-// }
+// acorda uma tarefa, retirando-a de sua fila atual, adicionando-a à fila de
+// tarefas prontas ("ready queue") e mudando seu estado para "pronta"
+void task_resume (task_t *task){
+	if (task->my_queue){
+		queue_remove((queue_t **)&(task->my_queue), (queue_t *)task);    //tira da fila
+	}
+	queue_append((queue_t **) &ready_tasks, (queue_t *) task);  //colocando na fila para esperar
+	task->my_queue = (queue_t **) &ready_tasks; // atualiza sua variavel de fila
+}
 
 

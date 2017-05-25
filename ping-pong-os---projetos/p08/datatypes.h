@@ -15,7 +15,6 @@ typedef struct task_t {
     struct task_t *prev, *next ;	// para usar com a biblioteca de filas (cast)
     int tid ;	// ID da tarefa
     // demais informações da tarefa
-    // preencher quando necessário
     ucontext_t context;
     struct queue_t **my_queue;  //fila em que essa task esta inserida
     int static_prio;
