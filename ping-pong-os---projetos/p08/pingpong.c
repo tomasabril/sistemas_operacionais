@@ -182,7 +182,7 @@ int task_switch (task_t *task)
 // Termina a tarefa corrente, indicando um valor de status encerramento
 void task_exit (int exitCode)
 {
-	current_tsk->lock = TRUE;
+    current_tsk->lock = TRUE;
 #ifdef DEBUG
     printf("task_exit: tarefa %d sendo encerrado com codigo %d\n", current_tsk->tid, exitCode);
 #endif
@@ -197,17 +197,14 @@ void task_exit (int exitCode)
 
 #if defined(DEBUG) || defined(DEBUG_JOIN)
     printf("status da tarefa encerrada = ");
-    if(current_tsk->status == READY){
-    	printf("READY");
-    }
-    else if(current_tsk->status == EXEC){
-    	printf("EXEC");
-    }
-    else if(current_tsk->status == SUSP){
-    	printf("SUSP");
-    }
-    else if(current_tsk->status == ENDED){
-    	printf("ENDED");
+    if(current_tsk->status == READY) {
+        printf("READY");
+    } else if(current_tsk->status == EXEC) {
+        printf("EXEC");
+    } else if(current_tsk->status == SUSP) {
+        printf("SUSP");
+    } else if(current_tsk->status == ENDED) {
+        printf("ENDED");
     }
     printf("\n");
 #endif
@@ -216,13 +213,12 @@ void task_exit (int exitCode)
     // while(current_tsk->wait_me_q){
     // 	task_resume((task_t *)current_tsk->wait_me_q);
     // }
-	if (current_tsk->wait_me_q)
-	{
-		current_tsk->wait_me_q->status = READY;
-		queue_append ((queue_t **) &ready_tasks, (queue_t *) current_tsk->wait_me_q) ;
-	}
+    if (current_tsk->wait_me_q) {
+        current_tsk->wait_me_q->status = READY;
+        queue_append ((queue_t **) &ready_tasks, (queue_t *) current_tsk->wait_me_q) ;
+    }
 
-	current_tsk->lock = FALSE;
+    current_tsk->lock = FALSE;
 
     if(current_tsk->tid == 1) {
         //task_switch(&main_tsk);
@@ -402,33 +398,34 @@ unsigned int systime ()
 }
 
 // a tarefa corrente aguarda o encerramento de outra task
-int task_join (task_t *task){
-	if (!task){
-		return -1;
-	}
-	if(task->status == ENDED){
-		return task->exit_code;
-	}
-	current_tsk->lock = TRUE;
-	//task_suspend(current_tsk, &(task->wait_me_q));
+int task_join (task_t *task)
+{
+    if (!task) {
+        return -1;
+    }
+    if(task->status == ENDED) {
+        return task->exit_code;
+    }
+    current_tsk->lock = TRUE;
+    //task_suspend(current_tsk, &(task->wait_me_q));
 
-	//
+    //
 #ifdef DEBUG
     printf("tarefa %d esperando tarefa %d \n", current_tsk->tid, task->tid);
 #endif
-	// task_t * em_espera = current_tsk;
-	// task_t * esperando = task;
-	//queue_remove((queue_t **)&ready_tasks, (queue_t *)em_espera);    //tira da fila
-	current_tsk->status = SUSP;
-	task->wait_me_q = current_tsk;
-	//em_espera->esperando_essa = task;
-	//fica esperando a outra terminar
-	queue_remove((queue_t **)&ready_tasks, (queue_t *)current_tsk);    //tira da fila
+    // task_t * em_espera = current_tsk;
+    // task_t * esperando = task;
+    //queue_remove((queue_t **)&ready_tasks, (queue_t *)em_espera);    //tira da fila
+    current_tsk->status = SUSP;
+    task->wait_me_q = current_tsk;
+    //em_espera->esperando_essa = task;
+    //fica esperando a outra terminar
+    queue_remove((queue_t **)&ready_tasks, (queue_t *)current_tsk);    //tira da fila
 
-	current_tsk->lock = FALSE;
-	task_switch(&dispatcher);   //volta pro dispatcher
+    current_tsk->lock = FALSE;
+    task_switch(&dispatcher);   //volta pro dispatcher
 
-	//while ((em_espera->esperando_essa)->status != ENDED){
+    //while ((em_espera->esperando_essa)->status != ENDED){
 // 	while (esperando->status != ENDED){
 
 // #if defined(DEBUG) || defined(DEBUG_JOIN)
@@ -451,9 +448,9 @@ int task_join (task_t *task){
 
 // 		task_yield();
 // 	}
-	
 
-	return task->exit_code;
+
+    return task->exit_code;
 }
 
 // // suspende uma tarefa, retirando-a de sua fila atual, adicionando-a à fila
