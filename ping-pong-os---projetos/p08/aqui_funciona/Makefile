@@ -7,4 +7,4 @@ all: pingpong.o queue.o pingpong-join.o
 clean:
 	rm *.o execut-join
 
-#-Wall -Wextra 
+#-Wall -Wextra
