@@ -188,6 +188,7 @@ void task_exit (int exitCode)
 
     unsigned int now = systime();
     unsigned int exec_time = now - current_tsk->init_time;
+    current_tsk->exec_time = exec_time;
 
     printf("Task %d exit: exec_time %d ms, proc_time %d ms, %d activations\n", current_tsk->tid, exec_time, current_tsk->proc_time, current_tsk->activations);
 
