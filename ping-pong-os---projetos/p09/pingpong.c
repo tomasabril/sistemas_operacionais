@@ -7,15 +7,25 @@
 #include <signal.h>
 #include <sys/time.h>
 
+#define RED     "\x1b[31m"
+#define GREEN   "\x1b[32m"
+#define YELLOW  "\x1b[33m"
+#define BLUE    "\x1b[34m"
+#define MAGENTA "\x1b[35m"
+#define CYAN    "\x1b[36m"
+#define COLOR_RESET   "\x1b[0m"
+
+
 
 #define STACKSIZE 32768		/* tamanho de pilha das threads */ //copiei do p01, nao sei o porque desse tamanho em especifico
 #define TRUE 1
 #define FALSE 0
 
-//#define DEBUG true
+// #define DEBUG true
 //#define DEBUG_JOIN true
 //#define DEBUG_QUANTUM
-//#define DEBUG_SLEEP
+// #define DEBUG_SLEEP
+// #define DEBUGSLEEP2
 
 
 int id = 0;	//vai somando pra cada tarefa ter id diferente
@@ -25,7 +35,7 @@ task_t *current_tsk; // task sendo executada no momento
 task_t dispatcher;  //task que controla os despachamentos
 task_t *ready_tasks = NULL; //lista de tarefas prontas
 task_t *sleep_tasks = NULL; //lista de tarefas dormindo
-int userTasks = 0;  //contador de tarefas na fila
+int userTasks = 0;  //contador de tarefas
 
 int a = -1;   //aging coeficient
 int prio_min = -20; //essa é a task que executara antes
@@ -68,7 +78,7 @@ void pingpong_init ()
     current_tsk = &main_tsk;
 
 #ifdef DEBUG
-    printf("inicializando main com id %d \n", (&main_tsk)->tid);
+    printf(GREEN "inicializando main com id %d \n" COLOR_RESET, (&main_tsk)->tid);
 #endif
 
     task_create(&dispatcher, dispatcher_body, "dispatcher ");
@@ -121,6 +131,7 @@ int task_create (task_t *task,			// descritor da nova tarefa
             task->proc_time = 0;
             task->exec_time = 0;
             task->activations = 0;
+            task->exit_code = -10;
             task->status = READY;
             task->wait_me_q = NULL;
             task->lock = FALSE;
@@ -184,7 +195,7 @@ int task_switch (task_t *task)
 void task_exit (int exitCode)
 {
     current_tsk->lock = TRUE;
-#ifdef DEBUG
+#if defined(DEBUG) || defined(DEBUGSLEEP2)
     printf("task_exit: tarefa %d sendo encerrado com codigo %d\n", current_tsk->tid, exitCode);
 #endif
 
@@ -197,8 +208,8 @@ void task_exit (int exitCode)
     current_tsk->exit_code = exitCode;
     current_tsk->status = ENDED;
 
-#if defined(DEBUG) || defined(DEBUG_JOIN)
-    printf("status da tarefa encerrada = ");
+#if defined(DEBUG) || defined(DEBUG_JOIN) || defined(DEGUB_SLEEP) || defined(DEBUGSLEEP2)
+    printf("exit: tarefa %d encerrada com status = ", current_tsk->tid);
     if(current_tsk->status == READY) {
         printf("READY");
     } else if(current_tsk->status == EXEC) {
@@ -252,7 +263,7 @@ void task_yield ()
 
     // colocando na fila as tarefas de usuario
     if(current_tsk->tid != 1) {
-        userTasks++;
+        // userTasks++;
         queue_append((queue_t **) &ready_tasks, (queue_t *) current_tsk);  //colocando na fila para esperar
         current_tsk->my_queue = (queue_t **) &ready_tasks; // atualiza sua variavel de fila
         current_tsk->status = READY;
@@ -263,11 +274,11 @@ void task_yield ()
 
 void dispatcher_body(void *arg)
 {
-    userTasks = queue_size((queue_t *)ready_tasks);
+    // userTasks = queue_size((queue_t *)ready_tasks);
     while ( userTasks > 0 ) {
         // vendo se precisa acordar alguma tarefa--------------------------
 #if defined(DEBUG) || defined(DEBUG_SLEEP)
-    printf("\nvamos ver se tem algo pra acordar\n sleep queue size %d\n", queue_size((queue_t *)sleep_tasks));
+    // printf("\nvamos ver se tem algo pra acordar\n sleep queue size %d\n", queue_size((queue_t *)sleep_tasks));
 #endif
         if(queue_size((queue_t *)sleep_tasks) > 0) {
             task_t * nextslp;
@@ -277,13 +288,16 @@ void dispatcher_body(void *arg)
             for (i = 0; i < tamanho_fila; i++) {
                 nextslp = tsk_tmp;
                 tsk_tmp = (queue_t *)tsk_tmp->next; // aqui que tem quer ver se ta certo, mas funciona assim
-                if(nextslp->waketime >= systime()){
+                if((int)systime() >= nextslp->waketime){
+#if defined(DEBUG) || defined(DEBUG_SLEEP)
+    printf("systime: %d \ntask_id: %d \n wakeat: %d\n", (int)systime(), nextslp->tid, nextslp->waketime);
+#endif
                     //retura ela da fila de dormindo
                     queue_remove((queue_t **)&sleep_tasks, (queue_t *)nextslp);
                     nextslp->status = READY;
                     // colocando na fila de tarefas a executar
 #if defined(DEBUG) || defined(DEBUG_SLEEP)
-    printf("\ntirei da fila de sleep, colocando na fila prontas");
+    printf("\ntirei da fila de sleep, colocando na fila prontas\n");
 #endif
                     queue_append((queue_t **) &ready_tasks, (queue_t *) nextslp);
                     // atualiza variavel de fila
@@ -293,7 +307,7 @@ void dispatcher_body(void *arg)
              }
         }
         //-----------------------------------------------------------------
-    
+
         task_t *next = scheduler() ; // scheduler é uma função
         if (next) {
 #ifdef DEBUG
@@ -304,7 +318,7 @@ void dispatcher_body(void *arg)
             task_switch (next) ; // transfere controle para a tarefa "next"
             // ações após retornar da tarefa "next", se houverem
         }
-        userTasks = queue_size((queue_t *)ready_tasks);
+        // userTasks = queue_size((queue_t *)ready_tasks);
     }
     task_exit(0) ; // encerra a tarefa dispatcher
 }
@@ -316,7 +330,7 @@ task_t *scheduler_fcfs()
     //retorna nulo se nada na fila
     if(ready_tasks != NULL) {
         // lembrando que isso é a fila que eu fiz la no primeiro trabalho
-        userTasks--;
+        // userTasks--;
         task_t * next = ready_tasks;
         queue_remove((queue_t **)&ready_tasks, (queue_t *)next);    //tira da fila
 
@@ -324,7 +338,9 @@ task_t *scheduler_fcfs()
         return next;
     } else {
 #ifdef DEBUG
-        printf("Nada na fila, retornando 0 como proxima tarefa\n");
+    // printf(GREEN);
+    printf("Nada na fila, retornando 0 como proxima tarefa\n");
+    // printf(COLOR_RESET);
 #endif
         return NULL;
     }
@@ -336,7 +352,7 @@ task_t *scheduler()
     //retorna nulo se nada na fila
     if(ready_tasks != NULL) {
         // lembrando que isso é a fila que eu fiz la no primeiro trabalho
-        userTasks--;
+        // userTasks--;
 
         //pegar a task com a melhor prioridade
         int pmin = prio_max+1;
@@ -349,11 +365,7 @@ task_t *scheduler()
                 next = tsk_tmp;
             }
             tsk_tmp = (queue_t *)tsk_tmp->next; // aqui que tem quer ver se ta certo, mas funciona assim
-#if defined(DEBUG) || defined(DEBUG_SLEEP)
-    //printf("\nappend ??");
-#endif
-            //queue_append((queue_t **) &ready_tasks, (queue_t *) next);  //colocando na fila
-            
+
         }
 
         //retura ela da fila
@@ -422,7 +434,7 @@ void timer_tratador (int signum)
     if (current_tsk->tid != 1 && !current_tsk->lock) {
         quantum--;
         if (quantum <= 0) {
-            userTasks++;
+            // userTasks++;
             queue_append((queue_t **) &ready_tasks, (queue_t *) current_tsk);  //colocando na fila para esperar
             current_tsk->my_queue = (queue_t **) &ready_tasks; // atualiza sua variavel de fila
             task_switch(&dispatcher);   //volta pro dispatcher
@@ -442,20 +454,51 @@ int task_join (task_t *task)
     if (!task) {
         return -1;
     }
-    if(task->status == ENDED) {
+
+#if defined(DEBUG) || defined(DEBUG_JOIN) || defined(DEGUB_SLEEP) || defined(DEBUGSLEEP2)
+    printf("join: status da tarefa atual = ");
+    if(current_tsk->status == READY) {
+        printf("READY");
+    } else if(current_tsk->status == EXEC) {
+        printf("EXEC");
+    } else if(current_tsk->status == SUSP) {
+        printf("SUSP");
+    } else if(current_tsk->status == ENDED) {
+        printf("ENDED");
+    }
+    printf("\n");
+#endif
+#if defined(DEBUG) || defined(DEBUG_JOIN) || defined(DEGUB_SLEEP) || defined(DEBUGSLEEP2)
+    printf("join: status da tarefa que vou dar join = ");
+    if(task->status == READY) {
+        printf("READY");
+    } else if(current_tsk->status == EXEC) {
+        printf("EXEC");
+    } else if(current_tsk->status == SUSP) {
+        printf("SUSP");
+    } else if(current_tsk->status == ENDED) {
+        printf("ENDED");
+    }
+    printf("\n");
+#endif
+
+    if(task->status == ENDED || task->exit_code != -10) {
+#if defined(DEBUG) || defined(DEBUG_JOIN) ||defined(DEBUG_SLEEP) || defined(DEBUGSLEEP2)
+    printf("join: %d ia esperar mas tarefa %d ja acabou \n", current_tsk->tid, task->tid);
+#endif
         return task->exit_code;
     }
     // o lock impede o codigo de ser parado no meio de sua execução
     current_tsk->lock = TRUE;
 
-#ifdef DEBUG
+#if defined(DEBUG) || defined(DEBUG_JOIN) ||defined(DEBUG_SLEEP) || defined(DEBUGSLEEP2)
     printf("tarefa %d esperando tarefa %d \n", current_tsk->tid, task->tid);
 #endif
 
     //muda o status da tarefa a ser suspensa
     current_tsk->status = SUSP;
     //fica esperando a outra terminar
-    queue_remove((queue_t **)&ready_tasks, (queue_t *)current_tsk);    //tira da fila
+    // queue_remove((queue_t **)&ready_tasks, (queue_t *)current_tsk);    //tira da fila
     // colocando na fila de tarefas esperando a task terminar
     queue_append((queue_t **) &(task->wait_me_q), (queue_t *) current_tsk);
     // atualiza variavel de fila
@@ -525,5 +568,3 @@ void task_sleep (int t){
     current_tsk->lock = FALSE;
     task_switch(&dispatcher);   //volta pro dispatcher
 }
-
-
