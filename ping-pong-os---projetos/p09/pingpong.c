@@ -180,8 +180,8 @@ int task_switch (task_t *task)
         quantum = quantum_max;
         current_tsk->activations++;
 
-        atual_tsk->status = READY;
-        current_tsk->status = EXEC;
+        // atual_tsk->status = READY;
+        // current_tsk->status = EXEC;
 
         swapcontext(&atual_tsk->context, &current_tsk->context);
         return 0;
@@ -219,6 +219,7 @@ void task_exit (int exitCode)
     } else if(current_tsk->status == ENDED) {
         printf("ENDED");
     }
+    else {printf("ERRO de status");}
     printf("\n");
 #endif
 
@@ -381,6 +382,7 @@ task_t *scheduler()
         // reseta prioridade dinamica da task retirada
         next->dinamic_prio = next->static_prio;
         next->my_queue = NULL;
+        next->status = EXEC;
 
         return next;
     } else {
@@ -436,6 +438,7 @@ void timer_tratador (int signum)
         if (quantum <= 0) {
             // userTasks++;
             queue_append((queue_t **) &ready_tasks, (queue_t *) current_tsk);  //colocando na fila para esperar
+            current_tsk->status = READY;
             current_tsk->my_queue = (queue_t **) &ready_tasks; // atualiza sua variavel de fila
             task_switch(&dispatcher);   //volta pro dispatcher
         }
@@ -466,23 +469,25 @@ int task_join (task_t *task)
     } else if(current_tsk->status == ENDED) {
         printf("ENDED");
     }
+    else {printf("ERRO de status");}
     printf("\n");
 #endif
 #if defined(DEBUG) || defined(DEBUG_JOIN) || defined(DEGUB_SLEEP) || defined(DEBUGSLEEP2)
     printf("join: status da tarefa que vou dar join = ");
-    if(task->status == READY) {
-        printf("READY");
-    } else if(current_tsk->status == EXEC) {
+    if(task->status == EXEC) {
         printf("EXEC");
-    } else if(current_tsk->status == SUSP) {
+    } else if(task->status == READY) {
+        printf("READY");
+    } else if(task->status == SUSP) {
         printf("SUSP");
-    } else if(current_tsk->status == ENDED) {
+    } else if(task->status == ENDED) {
         printf("ENDED");
     }
+    else {printf("ERRO de status");}
     printf("\n");
 #endif
 
-    if(task->status == ENDED || task->exit_code != -10) {
+    if(task->status == ENDED) {
 #if defined(DEBUG) || defined(DEBUG_JOIN) ||defined(DEBUG_SLEEP) || defined(DEBUGSLEEP2)
     printf("join: %d ia esperar mas tarefa %d ja acabou \n", current_tsk->tid, task->tid);
 #endif
