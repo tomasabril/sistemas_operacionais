@@ -180,13 +180,9 @@ int task_switch (task_t *task)
         quantum = quantum_max;
         current_tsk->activations++;
 
-        // atual_tsk->status = READY;
-        // current_tsk->status = EXEC;
-
         swapcontext(&atual_tsk->context, &current_tsk->context);
         return 0;
     } else {
-
         return -1;
     }
 }
@@ -264,7 +260,6 @@ void task_yield ()
 
     // colocando na fila as tarefas de usuario
     if(current_tsk->tid != 1) {
-        // userTasks++;
         queue_append((queue_t **) &ready_tasks, (queue_t *) current_tsk);  //colocando na fila para esperar
         current_tsk->my_queue = (queue_t **) &ready_tasks; // atualiza sua variavel de fila
         current_tsk->status = READY;
@@ -275,11 +270,10 @@ void task_yield ()
 
 void dispatcher_body(void *arg)
 {
-    // userTasks = queue_size((queue_t *)ready_tasks);
     while ( userTasks > 0 ) {
         // vendo se precisa acordar alguma tarefa--------------------------
 #if defined(DEBUG) || defined(DEBUG_SLEEP)
-    // printf("\nvamos ver se tem algo pra acordar\n sleep queue size %d\n", queue_size((queue_t *)sleep_tasks));
+    printf("\nvamos ver se tem algo pra acordar\n sleep queue size %d\n", queue_size((queue_t *)sleep_tasks));
 #endif
         if(queue_size((queue_t *)sleep_tasks) > 0) {
             task_t * nextslp;
@@ -319,33 +313,11 @@ void dispatcher_body(void *arg)
             task_switch (next) ; // transfere controle para a tarefa "next"
             // ações após retornar da tarefa "next", se houverem
         }
-        // userTasks = queue_size((queue_t *)ready_tasks);
+
     }
     task_exit(0) ; // encerra a tarefa dispatcher
 }
 
-// do tipo FCFS
-//first come first served
-task_t *scheduler_fcfs()
-{
-    //retorna nulo se nada na fila
-    if(ready_tasks != NULL) {
-        // lembrando que isso é a fila que eu fiz la no primeiro trabalho
-        // userTasks--;
-        task_t * next = ready_tasks;
-        queue_remove((queue_t **)&ready_tasks, (queue_t *)next);    //tira da fila
-
-        next->my_queue = NULL;
-        return next;
-    } else {
-#ifdef DEBUG
-    // printf(GREEN);
-    printf("Nada na fila, retornando 0 como proxima tarefa\n");
-    // printf(COLOR_RESET);
-#endif
-        return NULL;
-    }
-}
 
 //com envelhecimento
 task_t *scheduler()
@@ -353,7 +325,6 @@ task_t *scheduler()
     //retorna nulo se nada na fila
     if(ready_tasks != NULL) {
         // lembrando que isso é a fila que eu fiz la no primeiro trabalho
-        // userTasks--;
 
         //pegar a task com a melhor prioridade
         int pmin = prio_max+1;
@@ -436,7 +407,6 @@ void timer_tratador (int signum)
     if (current_tsk->tid != 1 && !current_tsk->lock) {
         quantum--;
         if (quantum <= 0) {
-            // userTasks++;
             queue_append((queue_t **) &ready_tasks, (queue_t *) current_tsk);  //colocando na fila para esperar
             current_tsk->status = READY;
             current_tsk->my_queue = (queue_t **) &ready_tasks; // atualiza sua variavel de fila
@@ -511,7 +481,6 @@ int task_join (task_t *task)
 
     current_tsk->lock = FALSE;
     task_switch(&dispatcher);   //volta pro dispatcher
-
 
     return task->exit_code;
 }
