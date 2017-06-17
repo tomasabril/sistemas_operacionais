@@ -63,7 +63,6 @@ void pingpong_init ()
     /* desativa o buffer da saida padrao (stdout), usado pela função printf */
     setvbuf (stdout, 0, _IONBF, 0);
 
-
     //------------ criando main ---------------------------------------------
     main_tsk.tid = id++;	//comeca com id 0
     main_tsk.init_time = 0;
