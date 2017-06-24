@@ -1,6 +1,8 @@
 // PingPongOS - PingPong Operating System
 // Tomas Abril
 // 2017_1
+//
+// Estruturas de dados do sistema operacional
 
 #include <ucontext.h>
 #ifndef __DATATYPES__
@@ -23,14 +25,15 @@ typedef struct task_t {
     unsigned int activations;   // vezes em que a tarefa foi ativada;
     int exit_code;              // quando a tarefa sai salva aqui o codigo
     status_t status;
-    struct task_t *wait_me_q;   //tarefa me esperando terminar
+    struct task_t *wait_me_q;   //tarefas me esperando terminar
     int lock;                   // evitar que preempção estrague as coisas
     int waketime;             // quando acordar em milisegundos
 } task_t ;
 
 // estrutura que define um semáforo
 typedef struct {
-    // preencher quando necessário
+    int cont;                  // contador de recursos
+    struct task_t *fila;       // tarefas esperando recurso
 } semaphore_t ;
 
 // estrutura que define um mutex

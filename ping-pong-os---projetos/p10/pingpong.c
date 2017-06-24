@@ -1,3 +1,8 @@
+// PingPongOS - PingPong Operating System
+// Tomas Abril
+// 2017_1
+
+
 #include "queue.h"
 #include "pingpong.h"
 #include <stdlib.h>
@@ -26,6 +31,7 @@
 //#define DEBUG_QUANTUM
 // #define DEBUG_SLEEP
 // #define DEBUGSLEEP2
+// #define DEBUG_SEMAF
 
 
 int id = 0;	//vai somando pra cada tarefa ter id diferente
@@ -55,6 +61,8 @@ task_t *scheduler_fcfs();
 task_t *scheduler();
 void dispatcher_body(void *arg);
 void timer_tratador(int signum);
+void init_main();
+void init_temporizador();
 
 
 // Inicializa o sistema operacional; deve ser chamada no inicio do main()
@@ -63,6 +71,12 @@ void pingpong_init ()
     /* desativa o buffer da saida padrao (stdout), usado pela função printf */
     setvbuf (stdout, 0, _IONBF, 0);
 
+    init_main();
+    task_create(&dispatcher, dispatcher_body, "dispatcher ");
+    init_temporizador();
+}
+
+void init_main(){
     //------------ criando main ---------------------------------------------
     main_tsk.tid = id++;	//comeca com id 0
     main_tsk.init_time = 0;
@@ -77,11 +91,11 @@ void pingpong_init ()
     current_tsk = &main_tsk;
 
 #ifdef DEBUG
-    printf(GREEN "inicializando main com id %d \n" COLOR_RESET, (&main_tsk)->tid);
+    printf("inicializando main com id %d \n", (&main_tsk)->tid);
 #endif
+}
 
-    task_create(&dispatcher, dispatcher_body, "dispatcher ");
-
+void init_temporizador(){
     //-------- iniciando o temporizador --------------------------------------
     // registra a ação para o sinal de timer SIGALRM
     action.sa_handler = timer_tratador;
@@ -102,11 +116,10 @@ void pingpong_init ()
         perror ("Erro em setitimer: ");
         exit (1);
     }
-#ifdef DEBUG
+    #ifdef DEBUG
     printf("timer interval %d microsecs %d secs \n", tick_u, 0);
-#endif
+    #endif
     //-------- ------------------------ --------------------------------------
-
 }
 
 // Cria uma nova tarefa. Retorna um ID> 0 ou erro.
@@ -540,4 +553,120 @@ void task_sleep (int t){
 
     current_tsk->lock = FALSE;
     task_switch(&dispatcher);   //volta pro dispatcher
+}
+
+// semáforos-----------------------------------------------------
+// cria um semáforo com valor inicial "value"
+int sem_create (semaphore_t *s, int value){
+    //se nao tem semaforo retorna erro
+    if(!s){
+        return -1;
+    }
+    // o lock impede o codigo de ser parado no meio de sua execução
+    current_tsk->lock = TRUE;
+
+    s->cont = value;
+    s->fila = NULL;
+
+#if defined(DEBUG) || defined(DEBUG_SEMAF)
+    printf("sem_create: novo semaforo, valor: %d\n", value);
+#endif
+
+    current_tsk->lock = FALSE;
+    return 0;
+}
+
+// requisita o semáforo
+int sem_down (semaphore_t *s){
+    //se nao tem semaforo retorna erro
+    if(!s){
+        return -1;
+    }
+    // o lock impede o codigo de ser parado no meio de sua execução
+    current_tsk->lock = TRUE;
+
+    int ok = 0;
+    s->cont--;
+
+#if defined(DEBUG) || defined(DEBUG_SEMAF)
+    printf("sem_down: contador: %d \n", s->cont);
+#endif
+
+    if (s->cont < 0){
+        //faltou recurso, vamos suspender
+#if defined(DEBUG) || defined(DEBUG_SEMAF)
+    printf("sem_down: suspendendo tarefa %d \n", current_tsk->tid);
+#endif
+
+        current_tsk->status = SUSP;
+        queue_append((queue_t **) &(s->fila), (queue_t *) current_tsk);
+        current_tsk->my_queue = (queue_t *) s->fila;
+        task_switch(&dispatcher);
+        if(current_tsk->status == SUSP){
+            // o semaforo foi destruido antes dessa tarefa voltar
+            ok = -1;
+            current_tsk->status = READY;
+        }
+    }
+
+    current_tsk->lock = FALSE;
+    return ok;
+}
+
+// libera o semáforo
+int sem_up (semaphore_t *s){
+    //se nao tem semaforo retorna erro
+    if(!s){
+        return -1;
+    }
+    // o lock impede o codigo de ser parado no meio de sua execução
+    current_tsk->lock = TRUE;
+
+    s->cont++;
+#if defined(DEBUG) || defined(DEBUG_SEMAF)
+    printf("sem_up: tarefa %d deu up. valor: %d\n", current_tsk->tid, s->cont);
+#endif
+
+    if(s->fila){
+        //se tem gente esperando vamos acordar o primeiro
+        s->fila->status = READY;
+        s->fila->my_queue = NULL;
+        task_t * acordada = queue_remove((queue_t **)&(s->fila), (queue_t *)s->fila);
+        queue_append ((queue_t **) &ready_tasks, (queue_t *) acordada);
+        acordada->my_queue = (queue_t **) &ready_tasks;
+#if defined(DEBUG) || defined(DEBUG_SEMAF)
+    printf("sem_up: acordando tarefa %d \n", acordada->tid);
+#endif
+    }
+
+    current_tsk->lock = FALSE;
+    return 0;
+}
+
+// destroi o semáforo, liberando as tarefas bloqueadas
+int sem_destroy (semaphore_t *s){
+    //se nao tem semaforo retorna erro
+    if(!s){
+        return -1;
+    }
+    // o lock impede o codigo de ser parado no meio de sua execução
+    current_tsk->lock = TRUE;
+
+#if defined(DEBUG) || defined(DEBUG_SEMAF)
+    printf("sem_destroy: contador: %d \n", s->cont);
+#endif
+
+    while (s->fila) {
+        s->fila->my_queue = NULL;
+        task_t * acordada = queue_remove((queue_t **)&(s->fila), (queue_t *)s->fila);
+        queue_append ((queue_t **) &ready_tasks, (queue_t *) acordada);
+        acordada->my_queue = (queue_t **) &ready_tasks;
+#if defined(DEBUG) || defined(DEBUG_SEMAF)
+    printf("sem_destroy: acordando tarefa %d \n", acordada->tid);
+#endif
+    }
+    s->cont = 0;
+
+    current_tsk->lock = FALSE;
+    return 0;
 }

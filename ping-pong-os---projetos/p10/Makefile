@@ -1,10 +1,15 @@
+# Tomas Abril 2017
+
 CC = gcc
 CFLAGS = -g -I.
 
-all: pingpong.o queue.o pingpong-sleep.o
-	$(CC) -o execut pingpong.c queue.c pingpong-sleep.c
+sema: pingpong.o queue.o pingpong-semaphore.o
+	$(CC) -o execut-semaphore pingpong.c queue.c pingpong-semaphore.c
+
+race: pingpong.o queue.o pingpong-racecond.o
+		$(CC) -o execut-racecond pingpong.c queue.c pingpong-racecond.c
 
 clean:
-	rm *.o execut
+	rm *.o execut-semaphore execut-racecond
 
-#-Wall -Wextra 
+#-Wall -Wextra
