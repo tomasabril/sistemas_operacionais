@@ -32,9 +32,11 @@
 // #define DEBUG_QUANTUM
 // #define DEBUG_SLEEP
 // #define DEBUGSLEEP2
-#define DEBUG_SEMAF
+// #define DEBUG_SEMAF
 // #define DEBUG_BARR
-#define DEBUG_MSG
+// #define DEBUG_MSG
+// #define DEBUG_TSKSW
+// #define DEBUG_SCHED
 
 
 int id = 0;             //vai somando pra cada tarefa ter id diferente
@@ -190,8 +192,19 @@ int task_switch (task_t *task)
     if (task != NULL) {
         atual_tsk = current_tsk;
         current_tsk = task;
-#ifdef DEBUG
-        printf("task_switch: trocando contexto %d -> %d\n", atual_tsk->tid, current_tsk->tid);
+#if defined(DEBUG) || defined(DEBUG_TSKSW)
+        printf("task_switch: trocando contexto %d -> %d status: ", atual_tsk->tid, current_tsk->tid);
+        if(current_tsk->status == READY) {
+            printf("READY");
+        } else if(current_tsk->status == EXEC) {
+            printf("EXEC");
+        } else if(current_tsk->status == SUSP) {
+            printf("SUSP");
+        } else if(current_tsk->status == ENDED) {
+            printf("ENDED");
+        }
+        else {printf("ERRO de status");}
+        printf("\n");
 #endif
 
         // resetando quantum
@@ -298,6 +311,7 @@ void dispatcher_body(void *arg)
             task_t *tsk_tmp = sleep_tasks;
             int i;
             int tamanho_fila = queue_size((queue_t *)sleep_tasks);
+            // vendo se tem alguma tarefa para acordar na fila sleep_tasks
             for (i = 0; i < tamanho_fila; i++) {
                 nextslp = tsk_tmp;
                 tsk_tmp = (queue_t *)tsk_tmp->next; // aqui que tem quer ver se ta certo, mas funciona assim
@@ -368,6 +382,21 @@ task_t *scheduler()
             tsk_tmp = (queue_t *)tsk_tmp->next; // aqui que tem quer ver se ta certo tbm
         }
 
+#if defined(DEBUG) || defined(DEBUG_SCHED)
+    printf("scheduler: tarefa %d estava com status ", next->tid);
+    if(current_tsk->status == READY) {
+        printf("READY");
+    } else if(current_tsk->status == EXEC) {
+        printf("EXEC");
+    } else if(current_tsk->status == SUSP) {
+        printf("SUSP");
+    } else if(current_tsk->status == ENDED) {
+        printf("ENDED");
+    }
+    else {printf("ERRO de status");}
+    printf(" na fila de prontas\n");
+#endif
+
         // reseta prioridade dinamica da task retirada
         next->dinamic_prio = next->static_prio;
         next->my_queue = NULL;
@@ -375,7 +404,7 @@ task_t *scheduler()
 
         return next;
     } else {
-#ifdef DEBUG
+#if defined(DEBUG) //|| defined(DEBUG_SCHED)
         printf("Nada na fila, retornando 0 como proxima tarefa\n");
 #endif
         return NULL;
@@ -585,8 +614,11 @@ int sem_create (semaphore_t *s, int value){
 
 // requisita o semáforo
 int sem_down (semaphore_t *s){
+#if defined(DEBUG) || defined(DEBUG_SEMAF)
+    printf("sem_down: at %d \n", s);
+#endif
     //se nao tem semaforo retorna erro
-    if(s == NULL){
+    if(!s || s->fila == -1){
         return -1;
     }
     // o lock impede o codigo de ser parado no meio de sua execução
@@ -625,7 +657,6 @@ int sem_down (semaphore_t *s){
 #endif
         if(current_tsk->wake_error == -1) {
             current_tsk->wake_error = 0;
-            printf("depois do if\n");
             // o semaforo foi destruido antes dessa tarefa voltar
 #if defined(DEBUG) || defined(DEBUG_SEMAF)
     printf("sem_down: semaforo foi destruido antes da tarefa %d voltar\n", current_tsk->tid);
@@ -642,7 +673,7 @@ int sem_down (semaphore_t *s){
 // libera o semáforo
 int sem_up (semaphore_t *s){
     //se nao tem semaforo retorna erro
-    if(!s){
+    if(!s || s->fila == -1){
         return -1;
     }
     // o lock impede o codigo de ser parado no meio de sua execução
@@ -672,14 +703,14 @@ int sem_up (semaphore_t *s){
 // destroi o semáforo, liberando as tarefas bloqueadas
 int sem_destroy (semaphore_t *s){
     //se nao tem semaforo retorna erro
-    if(!s){
+    if(s == NULL){
         return -1;
     }
     // o lock impede o codigo de ser parado no meio de sua execução
     current_tsk->lock = TRUE;
 
 #if defined(DEBUG) || defined(DEBUG_SEMAF)
-    printf("sem_destroy: contador: %d \n", s->cont);
+    printf("sem_destroy: semaforo %d com contador = %d \n", s, s->cont);
 #endif
 
     while (s->fila) {
@@ -693,8 +724,11 @@ int sem_destroy (semaphore_t *s){
 #endif
     }
     s->cont = 0;
-    s->fila = NULL;
+    s->fila = -1;
     s = NULL;
+#if defined(DEBUG) || defined(DEBUG_SEMAFF)
+    printf("sem_destroy: semaforo %d \n", s);
+#endif
 
     current_tsk->lock = FALSE;
     return 0;

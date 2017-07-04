@@ -91,8 +91,9 @@ void consBody (void * arg)
 
 int main (int argc, char *argv[])
 {
-   int i ;
+   // srand(time(NULL));
 
+   int i ;
    printf ("Main INICIO\n") ;
 
    pingpong_init () ;
