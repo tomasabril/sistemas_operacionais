@@ -8,6 +8,7 @@
 *.gif binary
 *.pdf binary
 *.psd binary
+*.dat binary
 
 # do not mess with those
 *.ods binary
