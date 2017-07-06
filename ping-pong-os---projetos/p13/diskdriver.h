@@ -24,6 +24,7 @@ typedef struct disk_t
 {
     struct pedido_t *fila_pedidos;
     semaphore_t s_disco;
+    int npedidos;
     int signal;
 } disk_t ;
 
