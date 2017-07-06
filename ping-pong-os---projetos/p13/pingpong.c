@@ -30,7 +30,7 @@
 // #define DEBUG_MSG
 // #define DEBUG_TSKSW
 // #define DEBUG_SCHED
-// #define DEBUG_DISK
+#define DEBUG_DISK
 
 
 int id = 0;             //vai somando pra cada tarefa ter id diferente
@@ -63,6 +63,7 @@ struct itimerval timer;
 task_t *scheduler_fcfs();
 task_t *scheduler();
 void dispatcher_body(void *arg);
+void sig_tratador(int signum);
 void timer_tratador(int signum);
 void init_main();
 void init_temporizador();
@@ -77,6 +78,7 @@ void pingpong_init ()
     init_main();
     task_create(&dispatcher, dispatcher_body, "dispatcher ");
     init_temporizador();
+    signal(SIGUSR1, sig_tratador);
 }
 
 void init_main(){
@@ -437,6 +439,34 @@ int task_getprio (task_t *task)
     return task->static_prio;
 }
 
+// tratador de sinais
+void sig_tratador(int signum){
+    // signum 14 : timer
+    // if (signum == 14){
+    //     timer_tratador(signum);
+    // }
+
+    // signum 10 : SIGUSR1
+    // disco
+#if defined(DEBUG) || defined(DEBUG_DISK)
+    printf(">>dbg>>>-  sig_tratador: signum recebido: %d\n", signum);
+#endif
+    if (signum == SIGUSR1)
+    {
+        #if defined(DEBUG) || defined(DEBUG_DISK)
+            printf(">>dbg>>>-  Received SIGUSR1! ultimo comando foi atendido pelo disco\n");
+        #endif
+        disk.signal = 1;
+        disk.fila_pedidos->atendido = 1;
+        // acordando disk_mngr
+        disk_mngr.status = READY;
+        queue_append ((queue_t **) &ready_tasks, (queue_t *) &disk_mngr);
+        disk_mngr.my_queue = (queue_t **) &ready_tasks;
+    }
+
+
+}
+
 // tratador do sinal, o que fazer quando der um tick
 void timer_tratador (int signum)
 {
@@ -444,6 +474,10 @@ void timer_tratador (int signum)
 #ifdef DEBUG_QUANTUM
     printf("sigum: %d, quantum: %d, task_id: %d \n", signum, quantum, current_tsk->tid);
 #endif
+
+// #if defined(DEBUG) || defined(DEBUG_DISK)
+//     printf(">>dbg>>>-  timer signal\n");
+// #endif
 
     sysclock_ms++;
     current_tsk->proc_time++;
@@ -956,46 +990,68 @@ printf("mqueue_msgs: %d mensagens na fila \n", (&queue->s_ocupado)->cont);
 
 void diskDriverBody (void * args)
 {
+
+
+#if defined(DEBUG) || defined(DEBUG_DISK)
+    printf(">>dbg>>>-  diskDriverBody: iniciando...\n");
+#endif
+
     while (1)
-        {
+    {
+#if defined(DEBUG) || defined(DEBUG_DISK)
+    printf(">>dbg>>>-  diskDriverBody: while (1)\n");
+#endif
         // obtém o semáforo de acesso ao disco
         sem_down(&disk.s_disco);
         // se foi acordado devido a um sinal do disco
         if (disk.signal)
-            {
+        {
+            #if defined(DEBUG) || defined(DEBUG_DISK)
+                printf(">>dbg>>>-  diskDriverBody: temos disk.signal\n");
+            #endif
             // acorda a tarefa cujo pedido foi atendido
-            int i = 0;
-            int tam = queue_size((queue_t *)disk.fila_pedidos);
+
             pedido_t *tmp = disk.fila_pedidos;
-            for (i=0; i<tam; i++){
-                if(tmp->atendido){
-                    // acorda
-                    queue_append ((queue_t **) &ready_tasks, (queue_t *) tmp->pedinte);
-                    tmp->pedinte->my_queue = (queue_t **) &ready_tasks;
-                    tmp->pedinte->status = READY;
-                    break;
-                }
-                tmp = tmp->next;
+            if(tmp->atendido){
+                // acorda
+                queue_append ((queue_t **) &ready_tasks, (queue_t *) tmp->pedinte);
+                tmp->pedinte->my_queue = (queue_t **) &ready_tasks;
+                tmp->pedinte->status = READY;
             }
             disk.signal = 0;
-            }
+        }
         // se o disco estiver livre e houver pedidos de E/S na fila
-        if(disk_cmd (DISK_CMD_STATUS, 0, 0) == 0){
-            if (disk.fila_pedidos)
-            {
-                // escolhe na fila o pedido a ser atendido, usando FCFS
-                pedido_t* pedido =  queue_remove((queue_t **)&(disk.fila_pedidos), (queue_t *)disk.fila_pedidos));
-                // solicita ao disco a operação de E/S, usando disk_cmd()
-                disk_cmd(pedido->cmd, pedido->block, pedido->buffer);
+        // if(disk_cmd(DISK_CMD_STATUS, 0, 0) == 0){
+        if (disk.fila_pedidos)
+        {
+            #if defined(DEBUG) || defined(DEBUG_DISK)
+                printf(">>dbg>>>-  diskDriverBody: temos pedidos a processar\n");
+            #endif
+
+            while( disk_cmd(DISK_CMD_STATUS, 0, 0) != 1){
+                // printf(">>dbg>>>-  disk status: %d\n", disk_cmd(DISK_CMD_STATUS, 0, 0));
             }
+
+            #if defined(DEBUG) || defined(DEBUG_DISK)
+                printf(">>dbg>>>-  diskDriverBody: disco esta pronto, executando comando\n");
+            #endif
+            // escolhe na fila o pedido a ser atendido, usando FCFS
+            // pedido_t* pedido =  queue_remove((queue_t **)&(disk.fila_pedidos), (queue_t *)disk.fila_pedidos);
+            pedido_t* pedido = disk.fila_pedidos;
+            // solicita ao disco a operação de E/S, usando disk_cmd()
+            disk_cmd(pedido->cmd, pedido->block, pedido->buffer);
         }
-        else{
-            printf("disco ocupado\n");
-        }
+        // }
+        // else{
+        //     printf("disk_mngr: disco ocupado\n");
+        // }
         // libera o semáforo de acesso ao disco
         sem_up(&disk.s_disco);
         // suspende a tarefa corrente (retorna ao dispatcher)
         current_tsk->status = SUSP;
+        #if defined(DEBUG) || defined(DEBUG_DISK)
+            printf(">>dbg>>>-  diskDriverBody: suspendendo o disk manager e voltando ao dispatcher\n");
+        #endif
         task_switch(&dispatcher);
     }
 }
@@ -1009,6 +1065,18 @@ int diskdriver_init (int *numBlocks, int *blockSize){
     if(!numBlocks || !blockSize){
         return -1;
     }
+#if defined(DEBUG) || defined(DEBUG_DISK)
+    printf(">>dbg>>>-  inicializando disco \n");
+#endif
+
+    // inicializa um disco (operacao sincrona)
+    disk_cmd (DISK_CMD_INIT, 0, 0);
+
+    // consulta tamanho do disco (operacao sincrona)
+    *numBlocks = disk_cmd (DISK_CMD_DISKSIZE, 0, 0);
+
+    // consulta tamanho de cada bloco (operacao sincrona)
+    *blockSize = disk_cmd (DISK_CMD_BLOCKSIZE, 0, 0);
 
     disk.signal = 0;
     sem_create(&disk.s_disco, 1);
@@ -1020,17 +1088,25 @@ int diskdriver_init (int *numBlocks, int *blockSize){
 // leitura de um bloco, do disco para o buffer indicado
 int disk_block_read (int block, void *buffer){
 
+#if defined(DEBUG) || defined(DEBUG_DISK)
+    printf(">>dbg>>>-  disk_block_read: ler bloco %d\n", block);
+#endif
+
     // obtém o semáforo de acesso ao disco
     sem_down(&disk.s_disco);
 
     // inclui o pedido na fila de pedidos de acesso ao disco
     pedido_t novo;
+    novo.prev = NULL;
+    novo.next = NULL;
     novo.block = block;
     novo.buffer = buffer;
     novo.cmd = DISK_CMD_READ;
     novo.atendido = 0;
     novo.pedinte = current_tsk;
-    queue_append ((queue_t **) &disk.fila_pedidos, (queue_t *) &novo);
+
+    queue_append((queue_t **) &disk.fila_pedidos, (queue_t *) &novo);
+    // queue_append((queue_t **) &ready_tasks, (queue_t *) task);
 
     if (disk_mngr.status == SUSP)
     {
@@ -1050,6 +1126,10 @@ int disk_block_read (int block, void *buffer){
 
 // escrita de um bloco, do buffer indicado para o disco
 int disk_block_write (int block, void *buffer){
+
+    #if defined(DEBUG) || defined(DEBUG_DISK)
+        printf(">>dbg>>>-  disk_block_write: escrever bloco %d\n", block);
+    #endif
 
     // obtém o semáforo de acesso ao disco
     sem_down(&disk.s_disco);

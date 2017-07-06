@@ -31,7 +31,7 @@
 // o disco ira gerar um sinal SIGUSR1, que deve ser recebido e tratado pelo
 // gerenciador de discos, para acordar a tarefa que solicitou a operação.
 
-int disk_cmd (int cmd, int block, void *buffer) ;
+int disk_cmd (int cmd, int block, void *buffer);
 
 // Exemplos de uso:
 //
