@@ -4,7 +4,7 @@
 //
 // Código que simula um disco rígido - especificação da interface do disco
 
-// Atencao: deve ser usado o flag de ligacao -lrt, para ligar com a 
+// Atencao: deve ser usado o flag de ligacao -lrt, para ligar com a
 // biblioteca POSIX de tempo real, pois o disco simulado usa timers POSIX.
 
 #ifndef __HARDDISK__
@@ -43,12 +43,12 @@ int disk_cmd (int cmd, int block, void *buffer) ;
 // agenda a leitura de um bloco de disco (operacao assincrona)
 // int disk_cmd (DISK_CMD_READ, int block, void *buffer) ;
 // result < 0: erro
-// result = 0: ok (leitura agendada, sinal SIGUSR1 serah gerado ao completar)
+// result = 0: ok (leitura agendada, sinal SIGUSR1 será gerado ao completar)
 //
 // agenda a escrita de um bloco de disco (operacao assincrona)
 // int disk_cmd (DISK_CMD_WRITE, int block, void *buffer) ;
 // result < 0: erro
-// result = 0: ok (escrita agendada, sinal SIGUSR1 serah gerado ao completar)
+// result = 0: ok (escrita agendada, sinal SIGUSR1 será gerado ao completar)
 //
 // consulta status do disco (operacao sincrona)
 // int disk_cmd (DISK_CMD_STATUS, 0, 0) ;

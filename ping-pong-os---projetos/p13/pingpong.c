@@ -43,6 +43,8 @@ task_t *ready_tasks = NULL; //lista de tarefas prontas
 task_t *sleep_tasks = NULL; //lista de tarefas dormindo
 int userTasks = 0;      //contador de tarefas
 
+disk_t disk;
+
 int a = -1;         //aging coeficient
 int prio_min = -20; //essa é a task que executara antes
 int prio_max = 20;  //ultima coisa a ser executada
@@ -950,26 +952,52 @@ printf("mqueue_msgs: %d mensagens na fila \n", (&queue->s_ocupado)->cont);
 }
 
 // driver de disco rígido -------------------------------------------------
+//////////////////////////////////////////////////////////////////////////
 
 void diskDriverBody (void * args)
 {
-    // while (1)
-    //     {
-    //     // obtém o semáforo de acesso ao disco
-    //     // se foi acordado devido a um sinal do disco
-    //     if (disco gerou um sinal)
-    //         {
-    //         // acorda a tarefa cujo pedido foi atendido
-    //         }
-    //     // se o disco estiver livre e houver pedidos de E/S na fila
-    //     if (disco_livre && (fila de pedidos de acesso ao disco não está vazia))
-    //         {
-    //         // escolhe na fila o pedido a ser atendido, usando FCFS
-    //         // solicita ao disco a operação de E/S, usando disk_cmd()
-    //         }
-    //     // libera o semáforo de acesso ao disco
-    //     // suspende a tarefa corrente (retorna ao dispatcher)
-    // }
+    while (1)
+        {
+        // obtém o semáforo de acesso ao disco
+        sem_down(&disk.s_disco);
+        // se foi acordado devido a um sinal do disco
+        if (disk.signal)
+            {
+            // acorda a tarefa cujo pedido foi atendido
+            int i = 0;
+            int tam = queue_size((queue_t *)disk.fila_pedidos);
+            pedido_t *tmp = disk.fila_pedidos;
+            for (i=0; i<tam; i++){
+                if(tmp->atendido){
+                    // acorda
+                    queue_append ((queue_t **) &ready_tasks, (queue_t *) tmp->pedinte);
+                    tmp->pedinte->my_queue = (queue_t **) &ready_tasks;
+                    tmp->pedinte->status = READY;
+                    break;
+                }
+                tmp = tmp->next;
+            }
+            disk.signal = 0;
+            }
+        // se o disco estiver livre e houver pedidos de E/S na fila
+        if(disk_cmd (DISK_CMD_STATUS, 0, 0) == 0){
+            if (disk.fila_pedidos)
+            {
+                // escolhe na fila o pedido a ser atendido, usando FCFS
+                pedido_t* pedido =  queue_remove((queue_t **)&(disk.fila_pedidos), (queue_t *)disk.fila_pedidos));
+                // solicita ao disco a operação de E/S, usando disk_cmd()
+                disk_cmd(pedido->cmd, pedido->block, pedido->buffer);
+            }
+        }
+        else{
+            printf("disco ocupado\n");
+        }
+        // libera o semáforo de acesso ao disco
+        sem_up(&disk.s_disco);
+        // suspende a tarefa corrente (retorna ao dispatcher)
+        current_tsk->status = SUSP;
+        task_switch(&dispatcher);
+    }
 }
 
 
@@ -978,7 +1006,13 @@ void diskDriverBody (void * args)
 // numBlocks: tamanho do disco, em blocos
 // blockSize: tamanho de cada bloco do disco, em bytes
 int diskdriver_init (int *numBlocks, int *blockSize){
-    // task_create(&disk_mngr, diskDriverBody, "Disk Manager ");
+    if(!numBlocks || !blockSize){
+        return -1;
+    }
+
+    disk.signal = 0;
+    sem_create(&disk.s_disco, 1);
+    task_create(&disk_mngr, diskDriverBody, "Disk Manager ");
 
     return 0;
 }
@@ -986,15 +1020,30 @@ int diskdriver_init (int *numBlocks, int *blockSize){
 // leitura de um bloco, do disco para o buffer indicado
 int disk_block_read (int block, void *buffer){
 
-    // // obtém o semáforo de acesso ao disco
-    //
-    // // inclui o pedido na fila de pedidos de acesso ao disco
-    // if (gerente de disco está dormindo)
-    // {
-    // // acorda o gerente de disco (põe na fila de prontas)
-    // }
-    // // libera semáforo de acesso ao disco
-    // // suspende a tarefa corrente (retorna ao dispatcher)
+    // obtém o semáforo de acesso ao disco
+    sem_down(&disk.s_disco);
+
+    // inclui o pedido na fila de pedidos de acesso ao disco
+    pedido_t novo;
+    novo.block = block;
+    novo.buffer = buffer;
+    novo.cmd = DISK_CMD_READ;
+    novo.atendido = 0;
+    novo.pedinte = current_tsk;
+    queue_append ((queue_t **) &disk.fila_pedidos, (queue_t *) &novo);
+
+    if (disk_mngr.status == SUSP)
+    {
+    // acorda o gerente de disco (põe na fila de prontas)
+        disk_mngr.status = READY;
+        queue_append ((queue_t **) &ready_tasks, (queue_t *) &disk_mngr);
+        disk_mngr.my_queue = (queue_t **) &ready_tasks;
+    }
+    // libera semáforo de acesso ao disco
+    sem_up(&disk.s_disco);
+    // suspende a tarefa corrente (retorna ao dispatcher)
+    current_tsk->status = SUSP;
+    task_switch(&dispatcher);
 
     return 0;
 }
@@ -1002,15 +1051,30 @@ int disk_block_read (int block, void *buffer){
 // escrita de um bloco, do buffer indicado para o disco
 int disk_block_write (int block, void *buffer){
 
-    // // obtém o semáforo de acesso ao disco
-    //
-    // // inclui o pedido na fila de pedidos de acesso ao disco
-    // if (gerente de disco está dormindo)
-    // {
-    // // acorda o gerente de disco (põe na fila de prontas)
-    // }
-    // // libera semáforo de acesso ao disco
-    // // suspende a tarefa corrente (retorna ao dispatcher)
+    // obtém o semáforo de acesso ao disco
+    sem_down(&disk.s_disco);
+
+    // inclui o pedido na fila de pedidos de acesso ao disco
+    pedido_t novo;
+    novo.block = block;
+    novo.buffer = buffer;
+    novo.cmd = DISK_CMD_WRITE;
+    novo.atendido = 0;
+    novo.pedinte = current_tsk;
+    queue_append ((queue_t **) &disk.fila_pedidos, (queue_t *) &novo);
+
+    if (disk_mngr.status == SUSP)
+    {
+    // acorda o gerente de disco (põe na fila de prontas)
+        disk_mngr.status = READY;
+        queue_append ((queue_t **) &ready_tasks, (queue_t *) &disk_mngr);
+        disk_mngr.my_queue = (queue_t **) &ready_tasks;
+    }
+    // libera semáforo de acesso ao disco
+    sem_up(&disk.s_disco);
+    // suspende a tarefa corrente (retorna ao dispatcher)
+    current_tsk->status = SUSP;
+    task_switch(&dispatcher);
 
     return 0;
 }

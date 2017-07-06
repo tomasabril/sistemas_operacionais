@@ -7,18 +7,24 @@
 #ifndef __DISKDRIVER__
 #define __DISKDRIVER__
 
-typedef struct pedidos_t
+#include "datatypes.h"
+
+typedef struct pedido_t
 {
-    struct pedidos_t *prev, *next ;	// para usar com a biblioteca de filas (cast)
+    struct pedido_t *prev, *next ;	// para usar com a biblioteca de filas (cast)
     int block;
     void *buffer;
-} pedidos_t ;
+    int cmd;
+    int atendido;
+    task_t *pedinte;
+} pedido_t ;
 
 // structura de dados que representa o disco para o SO
 typedef struct disk_t
 {
-    struct pedidos_t *fila_pedidos;
-
+    struct pedido_t *fila_pedidos;
+    semaphore_t s_disco;
+    int signal;
 } disk_t ;
 
 

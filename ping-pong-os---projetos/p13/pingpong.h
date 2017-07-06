@@ -11,6 +11,7 @@
 #include "queue.h"
 #include "datatypes.h"		// estruturas de dados necessárias
 #include "diskdriver.h"
+#include "harddisk.h"
 
 #include <stdlib.h>
 #include <stdio.h>
