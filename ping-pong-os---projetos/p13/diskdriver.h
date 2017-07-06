@@ -1,17 +1,26 @@
 // PingPongOS - PingPong Operating System
-// Prof. Carlos A. Maziero, DAINF UTFPR
-// Versão 1.0 -- Março de 2015
+// Tomas Abril
+// 2017_1
 //
 // interface do driver de disco rígido
 
 #ifndef __DISKDRIVER__
 #define __DISKDRIVER__
 
-// structura de dados que representa o disco para o SO
-typedef struct
+typedef struct pedidos_t
 {
-  // preencher com os campos necessarios
+    struct pedidos_t *prev, *next ;	// para usar com a biblioteca de filas (cast)
+    int block;
+    void *buffer;
+} pedidos_t ;
+
+// structura de dados que representa o disco para o SO
+typedef struct disk_t
+{
+    struct pedidos_t *fila_pedidos;
+
 } disk_t ;
+
 
 // inicializacao do driver de disco
 // retorna -1 em erro ou 0 em sucesso
