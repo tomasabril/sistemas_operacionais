@@ -12,8 +12,8 @@ typedef enum status {READY=0, EXEC, SUSP, SLEEP, ENDED} status_t;
 
 // Estrutura que define uma tarefa
 typedef struct task_t {
-    struct task_t *prev, *next ;	// para usar com a biblioteca de filas (cast)
-    int tid ;	// ID da tarefa
+    struct task_t *prev, *next; // para usar com a biblioteca de filas (cast)
+    int tid;                    // ID da tarefa
     // demais informações da tarefa
     ucontext_t context;
     struct queue_t **my_queue;  //fila em que essa task esta inserida
@@ -27,27 +27,27 @@ typedef struct task_t {
     status_t status;
     struct task_t *wait_me_q;   //tarefas me esperando terminar
     int lock;                   // evitar que preempção estrague as coisas
-    int waketime;             // quando acordar em milisegundos
+    int waketime;               // quando acordar em milisegundos
     int wake_error;
-} task_t ;
+} task_t;
 
 // estrutura que define um semáforo
 typedef struct {
-    int cont;                  // contador de recursos
-    struct task_t *fila;       // tarefas esperando recurso
-} semaphore_t ;
+    int cont;                   // contador de recursos
+    struct task_t *fila;        // tarefas esperando recurso
+} semaphore_t;
 
 // estrutura que define um mutex
 typedef struct {
     // preencher quando necessário
-} mutex_t ;
+} mutex_t;
 
 // estrutura que define uma barreira
 typedef struct {
-    int cont;               // contador de tarefas
-    int n_max;              // maximo de tarefas na bareira
-    struct task_t *fila;    // tarefas esperando
-} barrier_t ;
+    int cont;                   // contador de tarefas
+    int n_max;                  // maximo de tarefas na bareira
+    struct task_t *fila;        // tarefas esperando
+} barrier_t;
 
 // estrutura que define uma fila de mensagens
 typedef struct {
@@ -59,6 +59,6 @@ typedef struct {
     semaphore_t s_fila;
     semaphore_t s_vaga;
     semaphore_t s_ocupado;
-} mqueue_t ;
+} mqueue_t;
 
 #endif

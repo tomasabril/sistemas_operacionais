@@ -14,9 +14,8 @@
 #define CYAN    "\x1b[36m"
 #define COLOR_RESET   "\x1b[0m"
 
-
-
-#define STACKSIZE 32768		/* tamanho de pilha das threads */ //copiei do p01, nao sei o porque desse tamanho em especifico
+/* tamanho de pilha das threads */
+#define STACKSIZE 32768 //copiei do p01, nao sei o porque desse tamanho em especifico
 #define TRUE 1
 #define FALSE 0
 
@@ -39,19 +38,19 @@ task_t main_tsk;        // main task
 task_t *current_tsk;    // task sendo executada no momento
 
 task_t dispatcher;      //task que controla os despachamentos
-task_t disk_mngr;      //task que controla os acessos ao disco
+task_t disk_mngr;       //task que controla os acessos ao disco
 task_t *ready_tasks = NULL; //lista de tarefas prontas
 task_t *sleep_tasks = NULL; //lista de tarefas dormindo
 int userTasks = 0;      //contador de tarefas
 
 disk_t disk;
 
-int a = -1;         //aging coeficient
-int prio_min = -20; //essa é a task que executara antes
-int prio_max = 20;  //ultima coisa a ser executada
+int a = -1;             //aging coeficient
+int prio_min = -20;     //essa é a task que executara antes
+int prio_max = 20;      //ultima coisa a ser executada
 int tick_u = 1000;
 int quantum_max = 20;
-int quantum = 0;    //essa variavel vai decrescendo para cada tarefa
+int quantum = 0;        //essa variavel vai decrescendo para cada tarefa
 unsigned int sysclock_ms = 0;
 int preemp = TRUE;
 
@@ -83,17 +82,17 @@ void pingpong_init ()
 
     // signal(SIGUSR1, sig_tratador);
     action2.sa_handler = sig_tratador;
-    sigemptyset (&action.sa_mask) ;
-    action.sa_flags = 0 ;
-    if (sigaction (SIGUSR1, &action2, 0) < 0){
-        perror ("Erro em sigaction: ") ;
-        exit (1) ;
+    sigemptyset (&action.sa_mask);
+    action.sa_flags = 0;
+    if (sigaction (SIGUSR1, &action2, 0) < 0) {
+        perror ("Erro em sigaction: ");
+        exit (1);
     }
 }
 
 void init_main(){
     //------------ criando main ---------------------------------------------
-    main_tsk.tid = id++;	//comeca com id 0
+    main_tsk.tid = id++; //comeca com id 0
     main_tsk.init_time = 0;
     main_tsk.proc_time = 0;
     main_tsk.exec_time = 0;
@@ -119,13 +118,13 @@ void init_temporizador(){
     action.sa_flags = 0;
     if (sigaction (SIGALRM, &action, 0) < 0) {
         perror ("Erro em sigaction: ");
-        exit (1) ;
+        exit (1);
     }
     // ajusta valores do temporizador
-    timer.it_value.tv_usec = 1 ;      // primeiro disparo, em micro-segundos
-    timer.it_value.tv_sec  = 0 ;      // primeiro disparo, em segundos
-    timer.it_interval.tv_usec = tick_u;   // disparos subsequentes, em micro-segundos
-    timer.it_interval.tv_sec  = 0 ;   // disparos subsequentes, em segundos
+    timer.it_value.tv_usec = 1;   // primeiro disparo, em micro-segundos
+    timer.it_value.tv_sec  = 0;   // primeiro disparo, em segundos
+    timer.it_interval.tv_usec = tick_u; // disparos subsequentes, em micro-segundos
+    timer.it_interval.tv_sec  = 0;// disparos subsequentes, em segundos
 
     // arma o temporizador ITIMER_REAL (vide man setitimer)
     if (setitimer (ITIMER_REAL, &timer, 0) < 0) {
@@ -139,13 +138,13 @@ void init_temporizador(){
 }
 
 // Cria uma nova tarefa. Retorna um ID> 0 ou erro.
-int task_create (task_t *task,			// descritor da nova tarefa
-                 void (*start_func)(void *),	// funcao corpo da tarefa
-                 void *arg)			// argumentos para a tarefa
+int task_create (task_t *task,      // descritor da nova tarefa
+        void (*start_func)(void *), // funcao corpo da tarefa
+        void *arg)                  // argumentos para a tarefa
 {
 
     if(task != NULL) {
-        getcontext (&(task->context));	//pega contexto atual
+        getcontext (&(task->context)); //pega contexto atual
 
         char *stack = malloc (STACKSIZE);
         //fazendo o contexto
@@ -278,9 +277,9 @@ void task_exit (int exitCode)
 
     if(current_tsk->tid != 1) {
         userTasks--;
-        #if defined(DEBUG) || defined(DEBUG_MAIN_ENDED)
+    #if defined(DEBUG) || defined(DEBUG_MAIN_ENDED)
         printf("task_exit: userTasks %d\n", userTasks);
-        #endif
+    #endif
         task_switch(&dispatcher);
     }
 
@@ -303,12 +302,12 @@ void task_yield ()
 
     // colocando na fila as tarefas de usuario
     if(current_tsk->tid != 1) {
-        queue_append((queue_t **) &ready_tasks, (queue_t *) current_tsk);  //colocando na fila para esperar
+        queue_append((queue_t **) &ready_tasks, (queue_t *) current_tsk); //colocando na fila para esperar
         current_tsk->my_queue = (queue_t **) &ready_tasks; // atualiza sua variavel de fila
         current_tsk->status = READY;
     }
 
-    task_switch(&dispatcher);   //volta pro dispatcher
+    task_switch(&dispatcher); //volta pro dispatcher
 }
 
 void dispatcher_body(void *arg)
@@ -316,7 +315,7 @@ void dispatcher_body(void *arg)
     while ( userTasks > 0 ) {
         // vendo se precisa acordar alguma tarefa--------------------------
 #if defined(DEBUG) || defined(DEBUG_SLEEP)
-    printf("\nvamos ver se tem algo pra acordar\n sleep queue size %d\n", queue_size((queue_t *)sleep_tasks));
+        printf("\nvamos ver se tem algo pra acordar\n sleep queue size %d\n", queue_size((queue_t *)sleep_tasks));
 #endif
         if(queue_size((queue_t *)sleep_tasks) > 0) {
             task_t * nextslp;
@@ -327,43 +326,38 @@ void dispatcher_body(void *arg)
             for (i = 0; i < tamanho_fila; i++) {
                 nextslp = tsk_tmp;
                 tsk_tmp = (queue_t *)tsk_tmp->next; // aqui que tem quer ver se ta certo, mas funciona assim
-                if((int)systime() >= nextslp->waketime){
+                if((int)systime() >= nextslp->waketime) {
 #if defined(DEBUG) || defined(DEBUG_SLEEP)
-    printf("systime: %d \ntask_id: %d \n wakeat: %d\n", (int)systime(), nextslp->tid, nextslp->waketime);
+                    printf("systime: %d \ntask_id: %d \n wakeat: %d\n", (int)systime(), nextslp->tid, nextslp->waketime);
 #endif
                     //retura ela da fila de dormindo
                     queue_remove((queue_t **)&sleep_tasks, (queue_t *)nextslp);
                     nextslp->status = READY;
                     // colocando na fila de tarefas a executar
 #if defined(DEBUG) || defined(DEBUG_SLEEP)
-    printf("\ntirei da fila de sleep, colocando na fila prontas\n");
+                    printf("\ntirei da fila de sleep, colocando na fila prontas\n");
 #endif
                     queue_append((queue_t **) &ready_tasks, (queue_t *) nextslp);
                     // atualiza variavel de fila
                     nextslp->my_queue = (queue_t **) &ready_tasks;
                     nextslp->waketime = 0;
-                 }
-             }
+                }
+            }
         }
         //-----------------------------------------------------------------
 
-        task_t *next = scheduler() ; // scheduler é uma função
+        task_t *next = scheduler(); // scheduler é uma função
         if (next) {
 #ifdef DEBUG
             printf("dispatcher_body: proxima tarefa id: %d\n", next->tid);
             //queue_print("lista: ",(queue_t **)ready_tasks, task_print);
 #endif
             // ações antes de lançar a tarefa "next", se houverem
-            task_switch (next) ; // transfere controle para a tarefa "next"
+            task_switch (next); // transfere controle para a tarefa "next"
             // ações após retornar da tarefa "next", se houverem
         }
-        // else{
-        //     printf("dispatcher_body: sem proxima tarefa, finalizando\n");
-        //     break;
-        // }
-
     }
-    task_exit(0) ; // encerra a tarefa dispatcher
+    task_exit(0); // encerra a tarefa dispatcher
 }
 
 
@@ -389,7 +383,7 @@ task_t *scheduler()
         }
 
         //retura ela da fila
-        queue_remove((queue_t **)&ready_tasks, (queue_t *)next);    //tira da fila
+        queue_remove((queue_t **)&ready_tasks, (queue_t *)next); //tira da fila
 
         //envelhece as que sobraram na fila
         tsk_tmp = ready_tasks;
@@ -399,18 +393,18 @@ task_t *scheduler()
         }
 
 #if defined(DEBUG) || defined(DEBUG_SCHED)
-    printf("scheduler: tarefa %d estava com status ", next->tid);
-    if(current_tsk->status == READY) {
-        printf("READY");
-    } else if(current_tsk->status == EXEC) {
-        printf("EXEC");
-    } else if(current_tsk->status == SUSP) {
-        printf("SUSP");
-    } else if(current_tsk->status == ENDED) {
-        printf("ENDED");
-    }
-    else {printf("ERRO de status");}
-    printf(" na fila de prontas\n");
+        printf("scheduler: tarefa %d estava com status ", next->tid);
+        if(current_tsk->status == READY) {
+            printf("READY");
+        } else if(current_tsk->status == EXEC) {
+            printf("EXEC");
+        } else if(current_tsk->status == SUSP) {
+            printf("SUSP");
+        } else if(current_tsk->status == ENDED) {
+            printf("ENDED");
+        }
+        else {printf("ERRO de status");}
+        printf(" na fila de prontas\n");
 #endif
 
         // reseta prioridade dinamica da task retirada
@@ -458,43 +452,25 @@ int task_getprio (task_t *task)
 
 // tratador de sinais
 void sig_tratador(int signum){
-    // signum 14 : timer
-    // if (signum == 14){
-    //     timer_tratador(signum);
-    // }
-
     // signum 10 : SIGUSR1
-    // disco
-// #if defined(DEBUG) || defined(DEBUG_DISK)
-//     printf(">>dbg>>>-  sig_tratador: signum recebido: %d\n", signum);
-// #endif
-//     if (signum == SIGUSR1)
-//     {
-        #if defined(DEBUG) || defined(DEBUG_DISK)
-            printf(">>dbg>>>-  Received SIGUSR1! ultimo comando foi atendido pelo disco\n");
-        #endif
-        disk.signal++;
-        // disk.fila_pedidos->atendido = 1;
-        // acordando disk_mngr
-        disk_mngr.status = READY;
-        queue_append ((queue_t **) &ready_tasks, (queue_t *) &disk_mngr);
-        disk_mngr.my_queue = (queue_t **) &ready_tasks;
-    // }
-
-
+    #if defined(DEBUG) || defined(DEBUG_DISK)
+    printf(">>dbg>>>-  Received SIGUSR1! ultimo comando foi atendido pelo disco\n");
+    #endif
+    disk.signal++;
+    // disk.fila_pedidos->atendido = 1;
+    // acordando disk_mngr
+    disk_mngr.status = READY;
+    queue_append ((queue_t **) &ready_tasks, (queue_t *) &disk_mngr);
+    disk_mngr.my_queue = (queue_t **) &ready_tasks;
 }
 
 // tratador do sinal, o que fazer quando der um tick
 void timer_tratador (int signum)
 {
-
+    // signum 14 : timer
 #ifdef DEBUG_QUANTUM
     printf("sigum: %d, quantum: %d, task_id: %d \n", signum, quantum, current_tsk->tid);
 #endif
-
-// #if defined(DEBUG) || defined(DEBUG_DISK)
-//     printf(">>dbg>>>-  timer signal\n");
-// #endif
 
     sysclock_ms++;
     current_tsk->proc_time++;
@@ -503,10 +479,10 @@ void timer_tratador (int signum)
     if (current_tsk->tid != 1 && !current_tsk->lock && preemp) {
         quantum--;
         if (quantum <= 0) {
-            queue_append((queue_t **) &ready_tasks, (queue_t *) current_tsk);  //colocando na fila para esperar
+            queue_append((queue_t **) &ready_tasks, (queue_t *) current_tsk); //colocando na fila para esperar
             current_tsk->status = READY;
             current_tsk->my_queue = (queue_t **) &ready_tasks; // atualiza sua variavel de fila
-            task_switch(&dispatcher);   //volta pro dispatcher
+            task_switch(&dispatcher); //volta pro dispatcher
         }
     }
 }
@@ -555,7 +531,7 @@ int task_join (task_t *task)
 
     if(task->status == ENDED) {
 #if defined(DEBUG) || defined(DEBUG_JOIN) ||defined(DEBUG_SLEEP) || defined(DEBUGSLEEP2)
-    printf("join: %d ia esperar mas tarefa %d ja acabou \n", current_tsk->tid, task->tid);
+        printf("join: %d ia esperar mas tarefa %d ja acabou \n", current_tsk->tid, task->tid);
 #endif
         return task->exit_code;
     }
@@ -576,7 +552,7 @@ int task_join (task_t *task)
     current_tsk->my_queue = (queue_t *) task->wait_me_q;
 
     current_tsk->lock = FALSE;
-    task_switch(&dispatcher);   //volta pro dispatcher
+    task_switch(&dispatcher); //volta pro dispatcher
 
     return task->exit_code;
 }
@@ -584,35 +560,13 @@ int task_join (task_t *task)
 // suspende uma tarefa, retirando-a de sua fila atual, adicionando-a à fila
 // queue e mudando seu estado para "suspensa"; usa a tarefa atual se task==NULL
 void task_suspend (task_t *task, task_t **queue){
-    printf("task suspend --------- \n");
-	int current = 0;
-	if (!task){
-		task = current_tsk;
-		current = 1;
-	}
-
-	if (task->my_queue){
-		queue_remove((queue_t **)&(task->my_queue), (queue_t *)task);    //tira da fila
-	}
-
-	queue_append((queue_t **) queue, (queue_t *) task);  //colocando na fila
-	task->my_queue = (queue_t **) queue; // atualiza sua variavel de fila
-
-	//se estou suspendendo a mesma que estou executando volta pro dispatcher
-	if(current){
-		task_switch(&dispatcher);
-	}
+    printf("task suspend --------- not implemented\n");
 }
 
 // acorda uma tarefa, retirando-a de sua fila atual, adicionando-a à fila de
 // tarefas prontas ("ready queue") e mudando seu estado para "pronta"
 void task_resume (task_t *task){
-    printf("task resume --------- \n");
-	if (task->my_queue){
-		queue_remove((queue_t **)&(task->my_queue), (queue_t *)task);    //tira da fila
-	}
-	queue_append((queue_t **) &ready_tasks, (queue_t *) task);  //colocando na fila para esperar
-	task->my_queue = (queue_t **) &ready_tasks; // atualiza sua variavel de fila
+    printf("task resume --------- not implemented\n");
 }
 
 // suspende a tarefa corrente por t segundos
@@ -628,7 +582,7 @@ void task_sleep (int t){
     //muda o status da tarefa a ser suspensa
     current_tsk->status = SLEEP;
     // tarefa está executando, portanto não está em nenhuma fila
-    //queue_remove((queue_t **)&ready_tasks, (queue_t *)current_tsk);//
+
     // colocando na fila de tarefas dormindo
     queue_append((queue_t **) &sleep_tasks, (queue_t *) current_tsk);
     // atualiza variavel de fila
@@ -636,14 +590,14 @@ void task_sleep (int t){
     current_tsk->waketime = systime() + t;
 
     current_tsk->lock = FALSE;
-    task_switch(&dispatcher);   //volta pro dispatcher
+    task_switch(&dispatcher); //volta pro dispatcher
 }
 
 // semáforos-----------------------------------------------------
 // cria um semáforo com valor inicial "value"
 int sem_create (semaphore_t *s, int value){
     //se nao tem semaforo retorna erro
-    if(!s){
+    if(!s) {
         return -1;
     }
     // o lock impede o codigo de ser parado no meio de sua execução
@@ -666,7 +620,7 @@ int sem_down (semaphore_t *s){
     printf("sem_down: at %d \n", s);
 #endif
     //se nao tem semaforo retorna erro
-    if(!s || s->fila == -1){
+    if(!s || s->fila == -1) {
         return -1;
     }
     // o lock impede o codigo de ser parado no meio de sua execução
@@ -679,10 +633,10 @@ int sem_down (semaphore_t *s){
     printf("sem_down: contador: %d \n", s->cont);
 #endif
 
-    if (s->cont < 0){
+    if (s->cont < 0) {
         //faltou recurso, vamos suspender
 #if defined(DEBUG) || defined(DEBUG_SEMAF)
-    printf("sem_down: suspendendo tarefa %d \n", current_tsk->tid);
+        printf("sem_down: suspendendo tarefa %d \n", current_tsk->tid);
 #endif
 
         current_tsk->status = SUSP;
@@ -690,24 +644,24 @@ int sem_down (semaphore_t *s){
         current_tsk->my_queue = (queue_t *) s->fila;
         task_switch(&dispatcher);
 #if defined(DEBUG) || defined(DEBUG_SEMAF)
-    printf("acordando, oi sou a tarefa %d na funcao sem_down. wake_error = %d status = ", current_tsk->tid, current_tsk->wake_error);
-    if(current_tsk->status == READY) {
-        printf("READY");
-    } else if(current_tsk->status == EXEC) {
-        printf("EXEC");
-    } else if(current_tsk->status == SUSP) {
-        printf("SUSP");
-    } else if(current_tsk->status == ENDED) {
-        printf("ENDED");
-    }
-    else {printf("ERRO de status");}
-    printf("\n");
+        printf("acordando, oi sou a tarefa %d na funcao sem_down. wake_error = %d status = ", current_tsk->tid, current_tsk->wake_error);
+        if(current_tsk->status == READY) {
+            printf("READY");
+        } else if(current_tsk->status == EXEC) {
+            printf("EXEC");
+        } else if(current_tsk->status == SUSP) {
+            printf("SUSP");
+        } else if(current_tsk->status == ENDED) {
+            printf("ENDED");
+        }
+        else {printf("ERRO de status");}
+        printf("\n");
 #endif
         if(current_tsk->wake_error == -1) {
             current_tsk->wake_error = 0;
             // o semaforo foi destruido antes dessa tarefa voltar
 #if defined(DEBUG) || defined(DEBUG_SEMAF)
-    printf("sem_down: semaforo foi destruido antes da tarefa %d voltar\n", current_tsk->tid);
+            printf("sem_down: semaforo foi destruido antes da tarefa %d voltar\n", current_tsk->tid);
 #endif
             ok = -1;
             current_tsk->status = READY;
@@ -721,7 +675,7 @@ int sem_down (semaphore_t *s){
 // libera o semáforo
 int sem_up (semaphore_t *s){
     //se nao tem semaforo retorna erro
-    if(!s || s->fila == -1){
+    if(!s || s->fila == -1) {
         return -1;
     }
     // o lock impede o codigo de ser parado no meio de sua execução
@@ -732,7 +686,7 @@ int sem_up (semaphore_t *s){
     printf("sem_up: tarefa %d deu up. valor: %d\n", current_tsk->tid, s->cont);
 #endif
 
-    if(s->fila){
+    if(s->fila) {
         //se tem gente esperando vamos acordar o primeiro
         s->fila->status = READY;
         s->fila->my_queue = NULL;
@@ -740,7 +694,7 @@ int sem_up (semaphore_t *s){
         queue_append ((queue_t **) &ready_tasks, (queue_t *) acordada);
         acordada->my_queue = (queue_t **) &ready_tasks;
 #if defined(DEBUG) || defined(DEBUG_SEMAF)
-    printf("sem_up: acordando tarefa %d \n", acordada->tid);
+        printf("sem_up: acordando tarefa %d \n", acordada->tid);
 #endif
     }
 
@@ -751,7 +705,7 @@ int sem_up (semaphore_t *s){
 // destroi o semáforo, liberando as tarefas bloqueadas
 int sem_destroy (semaphore_t *s){
     //se nao tem semaforo retorna erro
-    if(s == NULL){
+    if(s == NULL) {
         return -1;
     }
     // o lock impede o codigo de ser parado no meio de sua execução
@@ -768,7 +722,7 @@ int sem_destroy (semaphore_t *s){
         acordada->my_queue = (queue_t **) &ready_tasks;
         acordada->wake_error = -1;
 #if defined(DEBUG) || defined(DEBUG_SEMAF)
-    printf("sem_destroy: acordando tarefa %d \n", acordada->tid);
+        printf("sem_destroy: acordando tarefa %d \n", acordada->tid);
 #endif
     }
     s->cont = 0;
@@ -786,7 +740,7 @@ int sem_destroy (semaphore_t *s){
 
 // Inicializa uma barreira para N tarefas
 int barrier_create (barrier_t *b, int N){
-    if (!b){
+    if (!b) {
         return -1;
     }
     current_tsk->lock = TRUE;
@@ -799,12 +753,12 @@ int barrier_create (barrier_t *b, int N){
 #endif
 
     current_tsk->lock= FALSE;
-    return 0 ;
+    return 0;
 }
 
 // Chega a uma barreira
 int barrier_join (barrier_t *b){
-    if (!b){
+    if (!b) {
         return -1;
     }
     current_tsk->lock = TRUE;
@@ -812,16 +766,16 @@ int barrier_join (barrier_t *b){
 
     // se tem espaco coloca pra esperar na barreira
     b->cont++;
-    if(b->cont < b->n_max){
+    if(b->cont < b->n_max) {
         current_tsk->status = SUSP;
         queue_append((queue_t **) &(b->fila), (queue_t *) current_tsk);
         current_tsk->my_queue = (queue_t *) b->fila;
 #if defined(DEBUG) || defined(DEBUG_BARR)
-    printf("barrier_join: suspendendo tarefa %d \n", current_tsk->tid);
+        printf("barrier_join: suspendendo tarefa %d \n", current_tsk->tid);
 #endif
         // current_tsk->lock = FALSE;
         task_switch(&dispatcher);
-        if(current_tsk->status == SUSP){
+        if(current_tsk->status == SUSP) {
             // a barreira foi destruida antes dessa tarefa voltar
             ok = -1;
             current_tsk->status = READY;
@@ -836,7 +790,7 @@ int barrier_join (barrier_t *b){
             acordada->my_queue = (queue_t **) &ready_tasks;
             acordada->status = READY;
 #if defined(DEBUG) || defined(DEBUG_BARR)
-    printf("barrier_join: acordando tarefa %d \n", acordada->tid);
+            printf("barrier_join: acordando tarefa %d \n", acordada->tid);
 #endif
         }
         b->cont = 0;
@@ -848,12 +802,12 @@ int barrier_join (barrier_t *b){
 
 // Destrói uma barreira
 int barrier_destroy (barrier_t *b){
-    if (!b){
+    if (!b) {
         return -1;
     }
     current_tsk->lock= TRUE;
 #if defined(DEBUG) || defined(DEBUG_BARR)
-printf("barrier_destroy: destruindo barreira com %d tarefas esperando \n", b->cont);
+    printf("barrier_destroy: destruindo barreira com %d tarefas esperando \n", b->cont);
 #endif
 
     while (b->fila) {
@@ -864,7 +818,7 @@ printf("barrier_destroy: destruindo barreira com %d tarefas esperando \n", b->co
         acordada->wake_error = -1;
 
 #if defined(DEBUG) || defined(DEBUG_BARR)
-printf("barrier_destroy: acordando tarefa %d \n", acordada->tid);
+        printf("barrier_destroy: acordando tarefa %d \n", acordada->tid);
 #endif
     }
     b->cont = 0;
@@ -877,12 +831,12 @@ printf("barrier_destroy: acordando tarefa %d \n", acordada->tid);
 
 // cria uma fila para até max mensagens de size bytes cada
 int mqueue_create (mqueue_t *queue, int max, int size){
-    if(!queue){
+    if(!queue) {
         return -1;
     }
     current_tsk->lock = TRUE;
 #if defined(DEBUG) || defined(DEBUG_MSG)
-printf("mqueue_create: criando fila de mensagens \n");
+    printf("mqueue_create: criando fila de mensagens \n");
 #endif
 
     queue->fila_size = max;
@@ -901,22 +855,22 @@ printf("mqueue_create: criando fila de mensagens \n");
 
 // envia uma mensagem para a fila
 int mqueue_send (mqueue_t *queue, void *msg){
-    if(!queue){
+    if(!queue) {
         return -1;
     }
     current_tsk->lock = TRUE;
 
-    if(sem_down(&queue->s_vaga) < 0){
+    if(sem_down(&queue->s_vaga) < 0) {
         current_tsk->lock = FALSE;
         return -1;
     }
-    if(sem_down(&queue->s_fila) < 0){
+    if(sem_down(&queue->s_fila) < 0) {
         current_tsk->lock = FALSE;
         return -1;
     }
 
 #if defined(DEBUG) || defined(DEBUG_MSG)
-printf("mqueue_send: colocando mensagem da fila \n");
+    printf("mqueue_send: colocando mensagem da fila \n");
 #endif
     //copiando mensagem
     memcpy(&(queue->fila[queue->write_indice * queue->msg_size]), msg, queue->msg_size);
@@ -931,22 +885,22 @@ printf("mqueue_send: colocando mensagem da fila \n");
 
 // recebe uma mensagem da fila
 int mqueue_recv (mqueue_t *queue, void *msg){
-    if(!queue){
+    if(!queue) {
         return -1;
     }
     current_tsk->lock = TRUE;
 
-    if(sem_down(&queue->s_ocupado) <0){
+    if(sem_down(&queue->s_ocupado) <0) {
         current_tsk->lock = FALSE;
         return -1;
     }
-    if(sem_down(&queue->s_fila) <0){
+    if(sem_down(&queue->s_fila) <0) {
         current_tsk->lock = FALSE;
         return -1;
     }
 
 #if defined(DEBUG) || defined(DEBUG_MSG)
-printf("mqueue_recv: tirando mensagem da fila \n");
+    printf("mqueue_recv: tirando mensagem da fila \n");
 #endif
     //copiando mensagem
     memcpy(msg, &(queue->fila[queue->read_indice * queue->msg_size]), queue->msg_size);
@@ -961,12 +915,12 @@ printf("mqueue_recv: tirando mensagem da fila \n");
 
 // destroi a fila, liberando as tarefas bloqueadas
 int mqueue_destroy (mqueue_t *queue){
-    if(!queue){
+    if(!queue) {
         return -1;
     }
     current_tsk->lock = TRUE;
 #if defined(DEBUG) || defined(DEBUG_MSG)
-printf("mqueue_destroy: apagando fila \n");
+    printf("mqueue_destroy: apagando fila \n");
 #endif
 
     // limpando memoria
@@ -989,12 +943,12 @@ printf("mqueue_destroy: apagando fila \n");
 
 // informa o número de mensagens atualmente na fila
 int mqueue_msgs (mqueue_t *queue){
-    if(!queue){
+    if(!queue) {
         return -1;
     }
-    if((&queue->s_ocupado)->cont >= 0){
+    if((&queue->s_ocupado)->cont >= 0) {
 #if defined(DEBUG) || defined(DEBUG_MSG)
-printf("mqueue_msgs: %d mensagens na fila \n", (&queue->s_ocupado)->cont);
+        printf("mqueue_msgs: %d mensagens na fila \n", (&queue->s_ocupado)->cont);
 #endif
         return (&queue->s_ocupado)->cont;
     }else{
@@ -1016,23 +970,23 @@ void diskDriverBody (void * args)
     while (1)
     {
 #if defined(DEBUG) || defined(DEBUG_DISK)
-    printf(">>dbg>>>-  diskDriverBody: while (1)\n");
+        printf(">>dbg>>>-  diskDriverBody: while (1)\n");
 #endif
         // obtém o semáforo de acesso ao disco
         sem_down(&disk.s_disco);
         // se foi acordado devido a um sinal do disco
         while (disk.signal > 0)
         {
-            #if defined(DEBUG) || defined(DEBUG_DISK)
-                printf(">>dbg>>>-  diskDriverBody: temos disk.signal\n");
-            #endif
+        #if defined(DEBUG) || defined(DEBUG_DISK)
+            printf(">>dbg>>>-  diskDriverBody: temos disk.signal\n");
+        #endif
             // acorda a tarefa cujo pedido foi atendido
 
             pedido_t *pedido_atendido = disk.fila_pedidos;
             // acorda
-            #if defined(DEBUG) || defined(DEBUG_DISK)
-                printf(">>dbg>>>-  diskDriverBody: pedido atendido %d. acordando tarefa %d\n", pedido_atendido->atendido, pedido_atendido->pedinte);
-            #endif
+        #if defined(DEBUG) || defined(DEBUG_DISK)
+            printf(">>dbg>>>-  diskDriverBody: pedido atendido %d. acordando tarefa %d\n", pedido_atendido->atendido, pedido_atendido->pedinte);
+        #endif
             queue_remove((queue_t **)&(disk.fila_pedidos), (queue_t *)disk.fila_pedidos);
             queue_append ((queue_t **) &ready_tasks, (queue_t *) pedido_atendido->pedinte);
             pedido_atendido->pedinte->my_queue = (queue_t **) &ready_tasks;
@@ -1041,54 +995,50 @@ void diskDriverBody (void * args)
             disk.signal--;
         }
         // se o disco estiver livre e houver pedidos de E/S na fila
-        // if(disk_cmd(DISK_CMD_STATUS, 0, 0) == 0){
         if (disk.fila_pedidos)
         {
-            #if defined(DEBUG) || defined(DEBUG_DISK)
-                printf(">>dbg>>>-  diskDriverBody: temos pedidos a processar\n");
-            #endif
+        #if defined(DEBUG) || defined(DEBUG_DISK)
+            printf(">>dbg>>>-  diskDriverBody: temos pedidos a processar\n");
+        #endif
 
             // while( disk_cmd(DISK_CMD_STATUS, 0, 0) != 1){
             //     // printf(">>dbg>>>-  disk status: %d\n", disk_cmd(DISK_CMD_STATUS, 0, 0));
             // }
 
-            #if defined(DEBUG) || defined(DEBUG_DISK)
-                printf(">>dbg>>>-  diskDriverBody: disco esta pronto, executando comando\n");
-            #endif
+        #if defined(DEBUG) || defined(DEBUG_DISK)
+            printf(">>dbg>>>-  diskDriverBody: disco esta pronto, executando comando\n");
+        #endif
             // escolhe na fila o pedido a ser atendido, usando FCFS
             pedido_t* pedido = disk.fila_pedidos;
             // solicita ao disco a operação de E/S, usando disk_cmd()
             disk_cmd(pedido->cmd, pedido->block, pedido->buffer);
             disk.npedidos--;
         }
-        // }
-        // else{
-        //     printf("disk_mngr: disco ocupado\n");
-        // }
+
         // libera o semáforo de acesso ao disco
         sem_up(&disk.s_disco);
         // suspende a tarefa corrente (retorna ao dispatcher)
         current_tsk->status = SUSP;
-        #if defined(DEBUG) || defined(DEBUG_DISK)
-            printf(">>dbg>>>-  diskDriverBody: suspendendo o disk manager e voltando ao dispatcher\n");
-        #endif
+    #if defined(DEBUG) || defined(DEBUG_DISK)
+        printf(">>dbg>>>-  diskDriverBody: suspendendo o disk manager e voltando ao dispatcher\n");
+    #endif
 
-        #if defined(DEBUG) || defined(DEBUG_MAIN_ENDED)
-            printf(">>dbg>>>-  diskDriverBody: sou a tarefa %d .status da main = ", current_tsk->tid);
-            if(main_tsk.status == READY) {
-                printf("READY");
-            } else if(main_tsk.status == EXEC) {
-                printf("EXEC");
-            } else if(main_tsk.status == SUSP) {
-                printf("SUSP");
-            } else if(main_tsk.status == ENDED) {
-                printf("ENDED");
-            }
-            else {printf("ERRO de status");}
-            printf("\n");
-        #endif
+    #if defined(DEBUG) || defined(DEBUG_MAIN_ENDED)
+        printf(">>dbg>>>-  diskDriverBody: sou a tarefa %d .status da main = ", current_tsk->tid);
+        if(main_tsk.status == READY) {
+            printf("READY");
+        } else if(main_tsk.status == EXEC) {
+            printf("EXEC");
+        } else if(main_tsk.status == SUSP) {
+            printf("SUSP");
+        } else if(main_tsk.status == ENDED) {
+            printf("ENDED");
+        }
+        else {printf("ERRO de status");}
+        printf("\n");
+    #endif
 
-        if(main_tsk.status == ENDED){
+        if(main_tsk.status == ENDED) {
             task_exit(0);
         }
         task_switch(&dispatcher);
@@ -1102,7 +1052,7 @@ void diskDriverBody (void * args)
 // numBlocks: tamanho do disco, em blocos
 // blockSize: tamanho de cada bloco do disco, em bytes
 int diskdriver_init (int *numBlocks, int *blockSize){
-    if(!numBlocks || !blockSize){
+    if(!numBlocks || !blockSize) {
         return -1;
     }
 #if defined(DEBUG) || defined(DEBUG_DISK)
@@ -1149,12 +1099,11 @@ int disk_block_read (int block, void *buffer){
     novo.pedinte = current_tsk;
 
     queue_append((queue_t **) &disk.fila_pedidos, (queue_t *) &novo);
-    // queue_append((queue_t **) &ready_tasks, (queue_t *) task);
     disk.npedidos++;
 
     if (disk_mngr.status == SUSP)
     {
-    // acorda o gerente de disco (põe na fila de prontas)
+        // acorda o gerente de disco (põe na fila de prontas)
         disk_mngr.status = READY;
         queue_append ((queue_t **) &ready_tasks, (queue_t *) &disk_mngr);
         disk_mngr.my_queue = (queue_t **) &ready_tasks;
@@ -1172,7 +1121,7 @@ int disk_block_read (int block, void *buffer){
 int disk_block_write (int block, void *buffer){
 
     #if defined(DEBUG) || defined(DEBUG_DISK)
-        printf(">>dbg>>>-  disk_block_write: escrever bloco %d\n", block);
+    printf(">>dbg>>>-  disk_block_write: escrever bloco %d\n", block);
     #endif
 
     // obtém o semáforo de acesso ao disco
@@ -1189,12 +1138,11 @@ int disk_block_write (int block, void *buffer){
     novo.pedinte = current_tsk;
 
     queue_append((queue_t **) &disk.fila_pedidos, (queue_t *) &novo);
-    // queue_append((queue_t **) &ready_tasks, (queue_t *) task);
     disk.npedidos++;
 
     if (disk_mngr.status == SUSP)
     {
-    // acorda o gerente de disco (põe na fila de prontas)
+        // acorda o gerente de disco (põe na fila de prontas)
         disk_mngr.status = READY;
         queue_append ((queue_t **) &ready_tasks, (queue_t *) &disk_mngr);
         disk_mngr.my_queue = (queue_t **) &ready_tasks;

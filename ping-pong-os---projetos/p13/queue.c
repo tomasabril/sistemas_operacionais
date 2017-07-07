@@ -105,7 +105,6 @@ int queue_size (queue_t *queue)
             i++;
             elemtmp = elemtmp->next;
         }
-
     }
     return i;
 }
@@ -133,5 +132,4 @@ void queue_print (char *name, queue_t *queue, void print_elem (void*) )
     } else {
         printf("[]");
     }
-
 }
